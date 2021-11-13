@@ -1,0 +1,11 @@
+node_modules
+
+cache
+artifacts
+typechain
+
+dist
+
+test/svg
+
+.env.*
