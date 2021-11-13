@@ -24,6 +24,148 @@ contract GenericRenderer {
     return (s.length == 0);
   }
 
+  /* Divide - Return quotient and remainder */
+  function getDivided(uint256 numerator, uint256 denominator)
+    public
+    pure
+    returns (uint256 quotient, uint256 remainder)
+  {
+    require(denominator > 0);
+    quotient = numerator / denominator;
+    remainder = numerator - denominator * quotient;
+  }
+
+  // function getColorIndex(bytes memory , ) internal pure returns (uint16) {
+  //   return c % MAX_COLORS;
+  // }
+
+  function getFormatInfo(uint16 numColors)
+    internal
+    pure
+    returns (
+      uint8,
+      uint8,
+      uint8,
+      uint8
+    )
+  {
+    uint8 bpp;
+    uint8 ppb;
+    uint8 mask;
+    uint8 shiftStart;
+
+    if (numColors <= 2) {
+      bpp = 1;
+      ppb = 8;
+      mask = 0x01;
+      shiftStart = 7;
+    } else if (numColors <= 4) {
+      bpp = 2;
+      ppb = 4;
+      mask = 0x03;
+      shiftStart = 6;
+    } else if (numColors <= 16) {
+      bpp = 4;
+      ppb = 2;
+      mask = 0x0f;
+      shiftStart = 4;
+    } else if (numColors <= 64) {
+      bpp = 8;
+      ppb = 1;
+      mask = 0xff;
+      shiftStart = 0;
+    }
+
+    return (bpp, ppb, mask, shiftStart);
+  }
+
+  function getColorIndex(
+    bytes1 data,
+    uint16 rowPixelNum,
+    uint8 ppb,
+    uint8 bpp,
+    uint8 mask,
+    uint8 shiftStart
+  ) internal pure returns (uint16) {
+    uint8 d = uint8(data);
+    if (ppb = 1) return uint16(d);
+    else return uint16((d >> (shiftStart - (rowPixelNum % ppb) * bpp)) & mask);
+  }
+
+  function getPaths2color(
+    bytes calldata data,
+    uint16 numRows,
+    uint16 numCols
+  ) internal view returns (bytes[] memory, uint8[] memory) {
+    uint16 numColors = 2;
+
+    uint256 startGas = gasleft();
+    uint8 c;
+    bytes[] memory paths = new bytes[](MAX_COLORS * MAX_MULTIPLIER);
+
+    (uint8 bpp, uint8 ppb, uint8 mask, uint8 shiftStart) = getFormatInfo(
+      numColors
+    );
+
+    // bytes[] memory paths = new bytes[](numColors);
+    // prettier-ignore
+    uint8[] memory multiplier = new uint8[](MAX_COLORS);
+
+    for (uint16 h = 0; h < numRows; h++) {
+      for (uint16 m = 0; m < numCols; m) {
+        uint256 mIndex = getDivided(m, ppb);
+        uint16 index = ((h * numCols) / ppb) + uint16(mIndex);
+        // uint16 index = (h * numCols) + m;
+
+        uint16 ci = getColorIndex(
+          data[index],
+          index,
+          ppb,
+          bpp,
+          mask,
+          shiftStart
+        );
+
+        /* == START: Get RLE length ==*/
+        c = 1;
+
+        while ((index + c) % numCols != 0) {
+          if (data[index] == data[index + c]) c++;
+          else break;
+        }
+        /* == END: Get RLE length ==*/
+
+        // Optimize gas by not creating long strings
+        ci = uint16(ci + (numColors * multiplier[ci]));
+        if (paths[ci].length > 700) {
+          if (multiplier[ci % numColors] < MAX_MULTIPLIER) {
+            multiplier[ci % numColors]++;
+          }
+          ci = uint16(
+            uint8(data[index]) + numColors * multiplier[ci % numColors]
+          );
+        }
+
+        paths[ci] = abi.encodePacked(
+          paths[ci],
+          'M',
+          lookup[m],
+          ' ',
+          lookup[h],
+          'h',
+          lookup[c]
+        );
+
+        m += c;
+      }
+    }
+
+    console.log('Gas Used while creating paths', startGas - gasleft());
+    console.log('Gas Left after creating paths', gasleft());
+
+    return (paths, multiplier);
+  }
+
   function getPaths(
     bytes calldata data,
     uint16 numColors,
@@ -33,6 +175,9 @@ contract GenericRenderer {
     uint256 startGas = gasleft();
     uint8 c;
     bytes[] memory paths = new bytes[](MAX_COLORS * MAX_MULTIPLIER);
+
+    uint8 bpp = getBitsPerPixel(numColors);
+    uint8 ppb = getPixelsPerByte(numColors);
 
     // bytes[] memory paths = new bytes[](numColors);
     // prettier-ignore
