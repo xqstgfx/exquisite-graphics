@@ -120,7 +120,7 @@ contract XQST_RENDER {
     view
     returns (bytes memory)
   {
-    // uint256 startGas = gasleft();
+    uint256 startGas = gasleft();
     bytes memory packedData;
     uint256 remainingLength = length;
     uint256 index;
@@ -158,7 +158,7 @@ contract XQST_RENDER {
       continue;
     }
 
-    // console.log('gas left', startGas - gasleft());
+    console.log('packN: gas used', startGas - gasleft(), 'with length', length);
 
     return packedData;
   }
@@ -199,29 +199,16 @@ contract XQST_RENDER {
       );
   }
 
-  /* RECT RENDERER */
-  function renderSVG(
+  function getRectSVG(
     bytes calldata data,
     string[] calldata palette,
     uint16 numRows,
     uint16 numCols
   ) public view returns (string memory) {
-    require(
-      palette.length <= MAX_COLORS,
-      'number of colors is greater than max'
-    );
-    require(numRows <= MAX_ROWS, 'number of rows is greater than max');
-    require(numCols <= MAX_COLS, 'number of columns is greater than max');
-    require(
-      data.length == numRows * numCols,
-      'Amount of data provided does not match the number of rows and columns'
-    );
-
-    // uint256 startGas = gasleft();
-    uint8 currBufSize = 0;
+    uint16 currBufSize = 0;
     SVGCursor memory pos;
 
-    uint16 maxBufSize = numRows >= numCols ? numRows : numCols;
+    uint16 maxBufSize = (numRows >= numCols) ? numRows * 1 : numCols * 1;
     bytes[] memory buffer = new bytes[](maxBufSize);
 
     string memory output = string(
@@ -257,6 +244,12 @@ contract XQST_RENDER {
 
         // uint16 ci = uint16(uint8(data[index]));
         buffer[currBufSize] = pixel4(pos);
+        console.log(
+          'len of bytes in buffer',
+          buffer[currBufSize].length,
+          'at index',
+          currBufSize
+        );
         currBufSize++;
 
         if (currBufSize == maxBufSize) {
@@ -277,9 +270,33 @@ contract XQST_RENDER {
       output = string(abi.encodePacked(output, '</g></svg>'));
     }
 
-    // console.log('String len', paths[0].length);
-    // console.log('Gas Used', startGas - gasleft());
-    // console.log('Gas Left', gasleft());
+    return output;
+  }
+
+  /* RECT RENDERER */
+  function renderSVG(
+    bytes calldata data,
+    string[] calldata palette,
+    uint16 numRows,
+    uint16 numCols
+  ) public view returns (string memory) {
+    require(
+      palette.length <= MAX_COLORS,
+      'number of colors is greater than max'
+    );
+    require(numRows <= MAX_ROWS, 'number of rows is greater than max');
+    require(numCols <= MAX_COLS, 'number of columns is greater than max');
+    require(
+      data.length == numRows * numCols,
+      'Amount of data provided does not match the number of rows and columns'
+    );
+
+    uint256 startGas = gasleft();
+
+    string memory output = getRectSVG(data, palette, numRows, numCols);
+
+    console.log('Gas Used', startGas - gasleft());
+    console.log('Gas Left', gasleft());
 
     return output;
   }
