@@ -4,8 +4,9 @@ import fs from 'fs';
 
 import chroma from 'chroma-js';
 
-import GenericRendererArtifact from '../artifacts/contracts/GenericRenderer.sol/GenericRenderer.json';
-import { GenericRenderer } from '../typechain';
+// import GenericRendererArtifact from '../artifacts/contracts/GenericRenderer.sol/GenericRenderer.json';
+import NumbersArtifact from '../artifacts/contracts/Numbers.sol/Numbers.json';
+import { XQSTRENDER, Numbers } from '../typechain';
 
 const { deployContract } = waffle;
 
@@ -28,7 +29,7 @@ function saveSVG(data: string, name: string) {
 }
 
 async function renderCubeHelix(
-  renderer: GenericRenderer,
+  renderer: XQSTRENDER,
   numRows: number,
   numCols: number,
   numColors: number
@@ -43,7 +44,7 @@ async function renderCubeHelix(
 }
 
 async function renderRainbow(
-  renderer: GenericRenderer,
+  renderer: XQSTRENDER,
   numRows: number,
   numCols: number,
   numColors: number
@@ -71,17 +72,22 @@ function generatePixels(nRows: number, nCols: number, nColors: number) {
 }
 
 describe('Renderer', () => {
-  let numbers: ;
+  let numbers: Numbers;
 
   beforeEach(async () => {
     // 1
     const signers = await ethers.getSigners();
-
     // 2
-    renderer = (await deployContract(
-      signers[0],
-      GenericRendererArtifact
-    )) as GenericRenderer;
+    numbers = (await deployContract(signers[0], NumbersArtifact)) as Numbers;
+  });
+
+  describe('do something', function () {
+    it('should do something', async function () {
+      const oneHundered = await numbers.getNum(100);
+      console.log(oneHundered);
+      const one337 = await numbers.getNum(1337);
+      console.log(one337);
+    });
   });
 
   // /* ~~~~~~~~~~~~~~ TEST 2 COLORS: 16x16 -> 32x32 ~~~~~~~~~~~~~~ */
@@ -96,5 +102,4 @@ describe('Renderer', () => {
   //     });
   //   });
   // }
-
 });

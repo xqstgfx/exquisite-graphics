@@ -18,16 +18,17 @@ contract Numbers {
     remainder = numerator - denominator * quotient;
   }
 
-  function getNumFixed(uint8 num) public view returns (string) {
-    return lookup[num];
-  }
+  function getNum(uint256 num) public view returns (string memory) {
+    if (num < 256) return lookup[num];
 
-  function getNum(uint256 num) public view returns (string) {
+    string[10] memory l = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
     string memory s;
+    uint256 val = num;
 
-    while (num > 0) {
-      (uint256 num, uint256 remainder) = getDivided(num, 10);
-      s = abi.encodePacked(lookup[remainder], s);
+    while (val > 0) {
+      (uint256 tmp, uint256 remainder) = getDivided(val, 10);
+      val = tmp;
+      s = string(abi.encodePacked(l[remainder], s));
     }
 
     return s;

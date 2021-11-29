@@ -33,10 +33,7 @@ contract XQST_RENDER {
     uint8 x;
     uint8 y;
     uint8 numColors;
-    uint8 outputBufSize;
-    uint16 maxBufSize;
-    uint16 currBufSize;
-    string[8] color;
+    string[4] color;
     bytes data;
   }
 
@@ -165,8 +162,6 @@ contract XQST_RENDER {
       remainingLength -= 1;
       continue;
     }
-
-    // console.log('packN: gas used', startGas - gasleft(), 'with length', length);
 
     return packedData;
   }
@@ -315,17 +310,42 @@ contract XQST_RENDER {
     }
   }
 
+  function _getColorIndex(
+    bytes calldata data,
+    uint256 pixelNum,
+    SVGData memory svgData
+  ) internal view returns (uint8) {
+    if (svgData.ppb == 1) {
+      return uint8(data[pixelNum]);
+    }
+
+    return
+      uint8(
+        (uint8(data[pixelNum / svgData.ppb]) >>
+          ((8 - svgData.bpp) - ((pixelNum % svgData.ppb) * svgData.bpp))) &
+          svgData.mask
+      );
+  }
+
+  // TODO: for Data format
   function getColors(
     bytes calldata data,
     string[] calldata palette,
     uint256 pixelNum,
-    uint256 rowLength,
-    SVGCursor memory pos
+    uint256 numCol,
+    SVGCursor memory pos,
+    SVGData memory svgData
   ) internal view {
     uint8 i;
-    for (i = 0; i < 4; i++) {
-      pos.color[i] = palette[uint8(data[pixelNum + i])];
-      if ((pixelNum + i) % rowLength == (rowLength - 1)) {
+
+    // min of 4 and row length?
+    uint8 min = 4 < numCol ? 4 : uint8(numCol);
+
+    for (i = 0; i < min; i++) {
+      uint8 colorIndex = _getColorIndex(data, pixelNum + i, svgData);
+      pos.color[i] = palette[colorIndex];
+
+      if ((pixelNum + i) % numCol == (numCol - 1)) {
         i++;
         break;
       }
@@ -336,51 +356,58 @@ contract XQST_RENDER {
   function getRectSVG(
     bytes calldata data,
     string[] calldata palette,
-    uint16 numRows,
-    uint16 numCols
-  ) public view returns (string memory) {
-    string memory output;
-
+    SVGData memory svgData,
+    SVGBuffers memory buffers
+  ) public view {
     SVGCursor memory pos;
-    pos.maxBufSize = (numRows >= numCols) ? numRows / 2 : numCols / 2;
-    bytes[] memory buffer = new bytes[](pos.maxBufSize + 5);
-    bytes[] memory outputBuf = new bytes[](pos.maxBufSize + 5);
 
-    for (uint256 pixelNum = 0; pixelNum < numCols * numRows; pixelNum) {
-      pos.x = uint8(pixelNum % numCols);
-      pos.y = uint8(pixelNum / numCols);
-      getColors(data, palette, pixelNum, numRows, pos);
+    for (uint256 pixelNum = 0; pixelNum < svgData.totalPixels; pixelNum) {
+      pos.x = uint8(pixelNum % svgData.numCols);
+      pos.y = uint8(pixelNum / svgData.numCols);
+      getColors(data, palette, pixelNum, svgData.numCols, pos, svgData);
       pixelN(pos);
 
-      buffer[pos.currBufSize] = pos.data;
-      pos.currBufSize++;
+      buffers.workingBuffer[buffers.currWorkingBufSize] = pos.data;
+      buffers.currWorkingBufSize++;
 
-      if (pos.currBufSize == pos.maxBufSize) {
-        outputBuf[pos.outputBufSize] = packN(buffer, pos.currBufSize);
-        pos.outputBufSize++;
-        pos.currBufSize = 0;
+      if (buffers.currWorkingBufSize == buffers.maxWorkingBufSize) {
+        buffers.outputBuffer[buffers.currOutputBufSize] = packN(
+          buffers.workingBuffer,
+          buffers.currWorkingBufSize
+        );
+        buffers.currOutputBufSize++;
+        buffers.currWorkingBufSize = 0;
       }
 
       pixelNum += pos.numColors;
     }
 
-    if (pos.currBufSize > 0) {
-      console.log(pos.outputBufSize);
-      outputBuf[pos.outputBufSize] = packN(buffer, pos.currBufSize);
-      pos.outputBufSize++;
+    if (buffers.currWorkingBufSize > 0) {
+      buffers.outputBuffer[buffers.currOutputBufSize] = packN(
+        buffers.workingBuffer,
+        buffers.currWorkingBufSize
+      );
+      buffers.currOutputBufSize++;
     }
-
-    output = string(packN(outputBuf, pos.outputBufSize));
-
-    return output;
   }
 
   struct SVGData {
     uint16 numRows;
     uint16 numCols;
+    uint16 totalPixels;
+    uint16 numColors;
+    uint8 bpp;
+    uint8 ppb;
+    uint8 mask;
+  }
+
+  struct SVGBuffers {
+    uint16 currWorkingBufSize;
+    uint16 maxWorkingBufSize;
     uint16 currOutputBufSize;
     uint16 maxOutputBufSize;
     bytes[] outputBuffer;
+    bytes[] workingBuffer;
   }
 
   /* RECT RENDERER */
@@ -394,38 +421,84 @@ contract XQST_RENDER {
       palette.length <= MAX_COLORS,
       'number of colors is greater than max'
     );
+    require(palette.length > 0, 'cannot have 0 colors');
     require(numRows <= MAX_ROWS, 'number of rows is greater than max');
     require(numCols <= MAX_COLS, 'number of columns is greater than max');
-    require(
-      data.length == numRows * numCols,
-      'Amount of data provided does not match the number of rows and columns'
-    );
+    // TODO: add this back in
+    // require(
+    //   data.length == numRows * numCols,
+    //   'Amount of data provided does not match the number of rows and columns'
+    // );
 
     uint256 startGas = gasleft();
+    SVGData memory svgData;
+    SVGBuffers memory buffers;
 
-    string memory output = string(
-      abi.encodePacked(
-        RECT_SVG_OPENER,
-        _numbers.getNum(numCols * 16),
-        ' ',
-        _numbers.getNum(numRows * 16),
-        '">',
-        RECT_TRANSFORM
-        // '<style>rect{height:1px;width:1px;}</style>'
-      )
-    );
+    svgData.numRows = numRows;
+    svgData.numCols = numCols;
+    svgData.totalPixels = numRows * numCols;
+    _setColorParams(svgData, palette);
 
-    output = string(
-      abi.encodePacked(
-        output,
-        getRectSVG(data, palette, numRows, numCols),
-        '</g></svg>'
-      )
-    );
+    buffers.currWorkingBufSize = 0;
+    buffers.currOutputBufSize = 0;
+    buffers.maxWorkingBufSize =
+      ((numRows >= numCols) ? numRows / 2 : numCols / 2) +
+      5;
+    buffers.maxOutputBufSize =
+      ((numRows >= numCols) ? numRows / 2 : numCols / 2) +
+      5;
+    buffers.outputBuffer = new bytes[](buffers.maxOutputBufSize);
+    buffers.workingBuffer = new bytes[](buffers.maxWorkingBufSize);
+
+    getRectSVG(data, palette, svgData, buffers);
 
     console.log('Gas Used', startGas - gasleft());
     console.log('Gas Left', gasleft());
 
-    return output;
+    buffers.outputBuffer[0] = abi.encodePacked(
+      RECT_SVG_OPENER,
+      _numbers.getNum(numCols * 16),
+      ' ',
+      _numbers.getNum(numRows * 16),
+      '">',
+      RECT_TRANSFORM,
+      buffers.outputBuffer[0]
+    );
+
+    buffers.outputBuffer[buffers.currOutputBufSize - 1] = bytes.concat(
+      buffers.outputBuffer[buffers.currOutputBufSize - 1],
+      '</g></svg>'
+    );
+
+    // output the output buffer to string
+    return string(packN(buffers.outputBuffer, buffers.currOutputBufSize));
+  }
+
+  function _setColorParams(SVGData memory svgData, string[] calldata palette)
+    internal
+    view
+  {
+    svgData.numColors = uint16(palette.length);
+    if (svgData.numColors > 16) {
+      // Use 256 Colors
+      svgData.bpp = 8;
+      svgData.ppb = 1;
+      svgData.mask = 0xff;
+    } else if (svgData.numColors > 4) {
+      // Use 16 Colors
+      svgData.bpp = 4;
+      svgData.ppb = 2;
+      svgData.mask = 0xf;
+    } else if (svgData.numColors > 2) {
+      // Use 4 Colors
+      svgData.bpp = 2;
+      svgData.ppb = 4;
+      svgData.mask = 0x3;
+    } else {
+      // Use 2 Color
+      svgData.bpp = 1;
+      svgData.ppb = 8;
+      svgData.mask = 0x1;
+    }
   }
 }
