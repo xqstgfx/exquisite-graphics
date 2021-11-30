@@ -15,6 +15,10 @@ type Pixel = {
 type PixelMap = Map<Point, PixelColor>;
 type Pixel2DArr = PixelColor[][];
 
+// Functions to reconstruct SVG from binary pixel format
+
+const getSVG = (data: string) => {};
+
 // Functions for most builders, working with simple pixel formats
 
 /* 

@@ -311,17 +311,17 @@ contract XQST_RENDER {
   }
 
   function _getColorIndex(
-    bytes calldata data,
+    bytes memory data,
     uint256 pixelNum,
-    SVGData memory svgData
+    SVGMetadata memory svgData
   ) internal view returns (uint8) {
     if (svgData.ppb == 1) {
-      return uint8(data[pixelNum]);
+      return uint8(data[pixelNum + svgData.dataStart]);
     }
 
     return
       uint8(
-        (uint8(data[pixelNum / svgData.ppb]) >>
+        (uint8(data[pixelNum / svgData.ppb + svgData.dataStart]) >>
           ((8 - svgData.bpp) - ((pixelNum % svgData.ppb) * svgData.bpp))) &
           svgData.mask
       );
@@ -329,12 +329,12 @@ contract XQST_RENDER {
 
   // TODO: for Data format
   function getColors(
-    bytes calldata data,
+    bytes memory data,
     string[] calldata palette,
     uint256 pixelNum,
     uint256 numCol,
     SVGCursor memory pos,
-    SVGData memory svgData
+    SVGMetadata memory svgData
   ) internal view {
     uint8 i;
 
@@ -354,17 +354,19 @@ contract XQST_RENDER {
   }
 
   function getRectSVG(
-    bytes calldata data,
+    bytes memory data,
     string[] calldata palette,
-    SVGData memory svgData,
+    SVGMetadata memory svgData,
     SVGBuffers memory buffers
   ) public view {
     SVGCursor memory pos;
 
+    console.log('total pixels', svgData.totalPixels);
+
     for (uint256 pixelNum = 0; pixelNum < svgData.totalPixels; pixelNum) {
-      pos.x = uint8(pixelNum % svgData.numCols);
-      pos.y = uint8(pixelNum / svgData.numCols);
-      getColors(data, palette, pixelNum, svgData.numCols, pos, svgData);
+      pos.x = uint8(pixelNum % svgData.width);
+      pos.y = uint8(pixelNum / svgData.width);
+      getColors(data, palette, pixelNum, svgData.width, pos, svgData);
       pixelN(pos);
 
       buffers.workingBuffer[buffers.currWorkingBufSize] = pos.data;
@@ -391,14 +393,27 @@ contract XQST_RENDER {
     }
   }
 
-  struct SVGData {
-    uint16 numRows;
-    uint16 numCols;
-    uint16 totalPixels;
+  struct SVGMetadata {
+    /* HEADER START */
+    uint8 version;
+    uint16 width;
+    uint16 height;
     uint16 numColors;
+    uint8 backgroundColorIndex;
+    uint8 reserved; // Reserved for future use
+    bool hasPalette;
+    bool hasBackground;
+    bool isRLE;
+    /* HEADER END */
+
+    /* CALCULATED DATA START */
+    uint16 totalPixels;
     uint8 bpp;
     uint8 ppb;
     uint8 mask;
+    uint16 paletteStart;
+    uint16 dataStart;
+    /* CALCULATED DATA END */
   }
 
   struct SVGBuffers {
@@ -411,19 +426,16 @@ contract XQST_RENDER {
   }
 
   /* RECT RENDERER */
-  function renderSVG(
-    bytes calldata data,
-    string[] calldata palette,
-    uint16 numRows,
-    uint16 numCols
-  ) public view returns (string memory) {
+  function renderSVG(bytes memory data, string[] calldata palette)
+    public
+    view
+    returns (string memory)
+  {
     require(
       palette.length <= MAX_COLORS,
       'number of colors is greater than max'
     );
     require(palette.length > 0, 'cannot have 0 colors');
-    require(numRows <= MAX_ROWS, 'number of rows is greater than max');
-    require(numCols <= MAX_COLS, 'number of columns is greater than max');
     // TODO: add this back in
     // require(
     //   data.length == numRows * numCols,
@@ -431,21 +443,29 @@ contract XQST_RENDER {
     // );
 
     uint256 startGas = gasleft();
-    SVGData memory svgData;
+    SVGMetadata memory svgData;
     SVGBuffers memory buffers;
 
-    svgData.numRows = numRows;
-    svgData.numCols = numCols;
-    svgData.totalPixels = numRows * numCols;
-    _setColorParams(svgData, palette);
+    _decodeHeader(data, svgData, 1);
+
+    require(svgData.height <= MAX_ROWS, 'number of rows is greater than max');
+    require(svgData.width <= MAX_COLS, 'number of columns is greater than max');
 
     buffers.currWorkingBufSize = 0;
     buffers.currOutputBufSize = 0;
     buffers.maxWorkingBufSize =
-      ((numRows >= numCols) ? numRows / 2 : numCols / 2) +
+      (
+        (svgData.height >= svgData.width)
+          ? svgData.height / 2
+          : svgData.width / 2
+      ) +
       5;
     buffers.maxOutputBufSize =
-      ((numRows >= numCols) ? numRows / 2 : numCols / 2) +
+      (
+        (svgData.height >= svgData.width)
+          ? svgData.height / 2
+          : svgData.width / 2
+      ) +
       5;
     buffers.outputBuffer = new bytes[](buffers.maxOutputBufSize);
     buffers.workingBuffer = new bytes[](buffers.maxWorkingBufSize);
@@ -457,9 +477,9 @@ contract XQST_RENDER {
 
     buffers.outputBuffer[0] = abi.encodePacked(
       RECT_SVG_OPENER,
-      _numbers.getNum(numCols * 16),
+      _numbers.getNum(svgData.width * 16),
       ' ',
-      _numbers.getNum(numRows * 16),
+      _numbers.getNum(svgData.height * 16),
       '">',
       RECT_TRANSFORM,
       buffers.outputBuffer[0]
@@ -474,11 +494,51 @@ contract XQST_RENDER {
     return string(packN(buffers.outputBuffer, buffers.currOutputBufSize));
   }
 
-  function _setColorParams(SVGData memory svgData, string[] calldata palette)
-    internal
+  function _decodeHeader(
+    bytes memory data,
+    SVGMetadata memory svgMetadata,
+    uint256 depth
+  ) internal view returns (SVGMetadata memory) {
+    uint64 header;
+
+    console.logBytes(data);
+
+    assembly {
+      // header := calldataload(add(44, mul(depth, 32)))
+      header := mload(add(data, 8))
+    }
+
+    console.log('header', header);
+
+    svgMetadata.version = uint8(header >> 56);
+    svgMetadata.width = uint16((header >> 48) & 0xFF);
+    svgMetadata.height = uint16((header >> 40) & 0xFF);
+    svgMetadata.numColors = uint16(header >> 24);
+    svgMetadata.backgroundColorIndex = uint8(header >> 16);
+    svgMetadata.hasPalette = ((header >> 2) & 0x1) == 1 ? true : false;
+    svgMetadata.hasBackground = ((header >> 1) & 0x1) == 1 ? true : false;
+    svgMetadata.isRLE = (header & 0x1) == 1 ? true : false;
+
+    svgMetadata.totalPixels = svgMetadata.width * svgMetadata.height;
+    svgMetadata.paletteStart = svgMetadata.hasPalette ? 8 : 0;
+    svgMetadata.dataStart = svgMetadata.hasPalette
+      ? (svgMetadata.numColors * 4) + 8
+      : 8;
+
+    _setColorParams(svgMetadata);
+  }
+
+  function decodeHeader(bytes calldata data)
+    public
     view
+    returns (SVGMetadata memory)
   {
-    svgData.numColors = uint16(palette.length);
+    SVGMetadata memory svgMetadata;
+    _decodeHeader(data, svgMetadata, 0);
+    return svgMetadata;
+  }
+
+  function _setColorParams(SVGMetadata memory svgData) internal view {
     if (svgData.numColors > 16) {
       // Use 256 Colors
       svgData.bpp = 8;
