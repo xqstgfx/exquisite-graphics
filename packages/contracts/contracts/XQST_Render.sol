@@ -29,15 +29,19 @@ contract XQST_RENDER {
   string constant PATH_START_DATA = '" d="';
   string constant END_TAG = '"/>';
 
+  // TODO play with this, it can be a heavy buffer to deal with, probably because of the string
   struct Pixel {
     uint8 x;
     uint8 y;
-    string color; // TODO is doing this extra gas?
+    uint8 width;
+    uint8 colorIndex;
   }
 
   struct SVGCursor {
-    Pixel[4] pixels;
+    Pixel[8] pixels;
+    // Pixel[8] rlePixels;
     uint8 numColors;
+    // uint8 numRLEPixels;
     bytes data;
   }
 
@@ -166,6 +170,7 @@ contract XQST_RENDER {
     return packedData;
   }
 
+  // TODO remove lookup business, have it in the right format
   function pixel4(SVGCursor memory pos, uint256 offset)
     internal
     view
@@ -173,35 +178,32 @@ contract XQST_RENDER {
   {
     return
       abi.encodePacked(
-        '<rect fill="',
-        pos.pixels[0 + offset].color,
+        '<use href="#',
+        lookup[pos.pixels[0 + offset].colorIndex],
         '" x="',
         lookup[pos.pixels[0 + offset].x],
         '" y="',
         lookup[pos.pixels[0 + offset].y],
-        '" height="1" width="1"/>',
-        '<rect fill="',
-        pos.pixels[1 + offset].color,
+        '"/><use href="#',
+        lookup[pos.pixels[1 + offset].colorIndex],
         '" x="',
         lookup[pos.pixels[1 + offset].x],
         '" y="',
         lookup[pos.pixels[1 + offset].y],
-        '" height="1" width="1"/>',
+        '"/><use href="#',
         abi.encodePacked(
-          '<rect fill="',
-          pos.pixels[2 + offset].color,
+          lookup[pos.pixels[2 + offset].colorIndex],
           '" x="',
           lookup[pos.pixels[2 + offset].x],
           '" y="',
           lookup[pos.pixels[2 + offset].y],
-          '" height="1" width="1"/>',
-          '<rect fill="',
-          pos.pixels[3 + offset].color,
+          '"/><use href="#',
+          lookup[pos.pixels[3 + offset].colorIndex],
           '" x="',
           lookup[pos.pixels[3 + offset].x],
           '" y="',
           lookup[pos.pixels[3 + offset].y],
-          '" height="1" width="1"/>'
+          '"/>'
         )
       );
   }
@@ -211,32 +213,29 @@ contract XQST_RENDER {
     view
     returns (bytes memory)
   {
-    return
+    abi.encodePacked(
+      '<use href="#',
+      lookup[pos.pixels[0 + offset].colorIndex],
+      '" x="',
+      lookup[pos.pixels[0 + offset].x],
+      '" y="',
+      lookup[pos.pixels[0 + offset].y],
+      '"/><use href="#',
+      lookup[pos.pixels[1 + offset].colorIndex],
+      '" x="',
+      lookup[pos.pixels[1 + offset].x],
+      '" y="',
+      lookup[pos.pixels[1 + offset].y],
+      '"/><use href="#',
       abi.encodePacked(
-        '<rect fill="',
-        pos.pixels[0 + offset].color,
+        lookup[pos.pixels[2 + offset].colorIndex],
         '" x="',
-        lookup[pos.pixels[0 + offset].x],
+        lookup[pos.pixels[2 + offset].x],
         '" y="',
-        lookup[pos.pixels[0 + offset].y],
-        '" height="1" width="1"/>',
-        '<rect fill="',
-        pos.pixels[1 + offset].color,
-        '" x="',
-        lookup[pos.pixels[1 + offset].x],
-        '" y="',
-        lookup[pos.pixels[1 + offset].y],
-        '" height="1" width="1"/>',
-        abi.encodePacked(
-          '<rect fill="',
-          pos.pixels[2 + offset].color,
-          '" x="',
-          lookup[pos.pixels[2 + offset].x],
-          '" y="',
-          lookup[pos.pixels[2 + offset].y],
-          '" height="1" width="1"/>'
-        )
-      );
+        lookup[pos.pixels[2 + offset].y],
+        '"/>'
+      )
+    );
   }
 
   function pixel2(SVGCursor memory pos, uint256 offset)
@@ -246,20 +245,19 @@ contract XQST_RENDER {
   {
     return
       abi.encodePacked(
-        '<rect fill="',
-        pos.pixels[0 + offset].color,
+        '<use href="#',
+        lookup[pos.pixels[0 + offset].colorIndex],
         '" x="',
         lookup[pos.pixels[0 + offset].x],
         '" y="',
         lookup[pos.pixels[0 + offset].y],
-        '" height="1" width="1"/>',
-        '<rect fill="',
-        pos.pixels[1 + offset].color,
+        '"/><use href="#',
+        lookup[pos.pixels[1 + offset].colorIndex],
         '" x="',
         lookup[pos.pixels[1 + offset].x],
         '" y="',
         lookup[pos.pixels[1 + offset].y],
-        '" height="1" width="1"/>'
+        '"/>'
       );
   }
 
@@ -270,13 +268,13 @@ contract XQST_RENDER {
   {
     return
       abi.encodePacked(
-        '<rect fill="',
-        pos.pixels[0 + offset].color,
+        '<use href="#',
+        lookup[pos.pixels[0 + offset].colorIndex],
         '" x="',
         lookup[pos.pixels[0 + offset].x],
         '" y="',
         lookup[pos.pixels[0 + offset].y],
-        '" height="1" width="1"/>'
+        '"/>'
       );
   }
 
@@ -364,6 +362,7 @@ contract XQST_RENDER {
 
     uint8 colorIndex;
 
+    // TODO should this be one large rect?
     for (uint256 pixelNum = 0; pixelNum < svgData.totalPixels; pixelNum) {
       // pos.x = uint8(pixelNum % svgData.width);
       // pos.y = uint8(pixelNum / svgData.width);
@@ -371,7 +370,7 @@ contract XQST_RENDER {
       // fill cursor
       // getColors(data, palette, pixelNum, svgData.width, pos, svgData);
 
-      while (pixelNum < svgData.totalPixels && pos.numColors < 4) {
+      while (pixelNum < svgData.totalPixels && pos.numColors < 8) {
         colorIndex = _getColorIndex(data, pixelNum, svgData);
 
         // If this color is the background we dont need to paint it with the cursor
@@ -382,7 +381,20 @@ contract XQST_RENDER {
           pixelNum++;
           continue;
         }
-        pos.pixels[pos.numColors].color = palette[colorIndex];
+
+        // this is for RLE
+        // if (
+        //   pixelNum > 0 &&
+        //   pos.numColors > 0 &&
+        //   colorIndex == pos.pixels[pos.numColors - 1].colorIndex
+        // ) {
+        //   pos.pixels[pos.numColors - 1].width++;
+        //   pixelNum++;
+        //   continue;
+        // }
+
+        pos.pixels[pos.numColors].width = 1;
+        pos.pixels[pos.numColors].colorIndex = colorIndex;
         pos.pixels[pos.numColors].x = uint8(pixelNum % svgData.width);
         pos.pixels[pos.numColors].y = uint8(pixelNum / svgData.width);
 
@@ -465,43 +477,15 @@ contract XQST_RENDER {
 
     /* Setup the SVG */
     _decodeHeader(data, svgData, 1);
-    _setupBuffers(svgData, buffers);
+    _setupBuffers(svgData, buffers, palette);
+    _initSymbols(palette, buffers);
+
+    console.log('num colors: ', svgData.numColors);
 
     getRectSVG(data, palette, svgData, buffers);
 
     console.log('Gas Used Rect', startGas - gasleft());
     console.log('Gas Left Rect', gasleft());
-
-    if (svgData.hasBackground) {
-      console.log('has background');
-      buffers.outputBuffer[0] = abi.encodePacked(
-        RECT_SVG_OPENER,
-        _numbers.getNum(svgData.width * 16),
-        ' ',
-        _numbers.getNum(svgData.height * 16),
-        '">',
-        RECT_TRANSFORM,
-        '<rect fill="',
-        palette[svgData.backgroundColorIndex],
-        '" height="',
-        lookup[svgData.height],
-        '" width="',
-        lookup[svgData.width],
-        '"/>',
-        buffers.outputBuffer[0]
-      );
-    } else {
-      console.log('no background');
-      buffers.outputBuffer[0] = abi.encodePacked(
-        RECT_SVG_OPENER,
-        _numbers.getNum(svgData.width * 16),
-        ' ',
-        _numbers.getNum(svgData.height * 16),
-        '">',
-        RECT_TRANSFORM,
-        buffers.outputBuffer[0]
-      );
-    }
 
     buffers.outputBuffer[buffers.currOutputBufSize - 1] = bytes.concat(
       buffers.outputBuffer[buffers.currOutputBufSize - 1],
@@ -518,6 +502,39 @@ contract XQST_RENDER {
     console.log('Gas Left Result', gasleft());
 
     return result;
+  }
+
+  function _initSymbols(string[] calldata palette, SVGBuffers memory buffers)
+    internal
+    view
+  {
+    console.log('init symbols');
+    console.log('palette length: ', palette.length);
+    bytes[] memory symbolBuffer = new bytes[](16);
+    uint256 symbolBufferSize = 0;
+
+    for (uint256 i = 0; i < palette.length; i++) {
+      symbolBuffer[symbolBufferSize] = abi.encodePacked(
+        symbolBuffer[symbolBufferSize],
+        '<symbol id="',
+        lookup[i],
+        '" width="1" height="1" viewBox="0 0 1 1"><rect fill="',
+        palette[i],
+        '" width="1" height="1"/></symbol>'
+      );
+
+      if ((i > 0 && i % 16 == 0) || i == palette.length - 1) {
+        symbolBufferSize++;
+      }
+    }
+
+    buffers.outputBuffer[0] = bytes.concat(
+      buffers.outputBuffer[0],
+      packN(symbolBuffer, symbolBufferSize)
+    );
+    buffers.currOutputBufSize++;
+
+    console.log('symbols done');
   }
 
   function _decodeHeader(
@@ -577,22 +594,50 @@ contract XQST_RENDER {
     // );
   }
 
-  function _setupBuffers(SVGMetadata memory meta, SVGBuffers memory buffers)
-    internal
-    view
-  {
+  function _setupBuffers(
+    SVGMetadata memory meta,
+    SVGBuffers memory buffers,
+    string[] calldata palette
+  ) internal view {
     buffers.currWorkingBufSize = 0;
     buffers.currOutputBufSize = 0;
 
     // TODO tune max sizes
-    buffers.maxWorkingBufSize =
-      ((meta.height >= meta.width) ? meta.height / 2 : meta.width / 2) +
-      5;
-    buffers.maxOutputBufSize =
-      ((meta.height >= meta.width) ? meta.height / 2 : meta.width / 2) +
-      5;
+    buffers.maxWorkingBufSize = (
+      (meta.height >= meta.width) ? meta.height / 2 : meta.width / 2 + 5
+    );
+    buffers.maxOutputBufSize = buffers.maxWorkingBufSize;
     buffers.outputBuffer = new bytes[](buffers.maxOutputBufSize);
     buffers.workingBuffer = new bytes[](buffers.maxWorkingBufSize);
+
+    if (meta.hasBackground) {
+      console.log('has background');
+      buffers.outputBuffer[0] = abi.encodePacked(
+        RECT_SVG_OPENER,
+        _numbers.getNum(meta.width * 16),
+        ' ',
+        _numbers.getNum(meta.height * 16),
+        '">',
+        RECT_TRANSFORM,
+        '<rect fill="',
+        palette[meta.backgroundColorIndex],
+        '" height="',
+        lookup[meta.height],
+        '" width="',
+        lookup[meta.width],
+        '"/>'
+      );
+    } else {
+      console.log('no background');
+      buffers.outputBuffer[0] = abi.encodePacked(
+        RECT_SVG_OPENER,
+        _numbers.getNum(meta.width * 16),
+        ' ',
+        _numbers.getNum(meta.height * 16),
+        '">',
+        RECT_TRANSFORM
+      );
+    }
   }
 
   function decodeHeader(bytes calldata data)
