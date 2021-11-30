@@ -47,27 +47,52 @@ function saveSVG(data: string, name: string) {
   });
 }
 
+type PixelOptions = {
+  backgroundEnabled?: number;
+  backgroundColorIndex?: number;
+  paletteInHeader?: number;
+  rleEnabled?: number;
+};
+
 function generatePixelHeader(
   width: number,
   height: number,
   nColors: number,
   version: number = 1,
-  backgroundColorIndex: number = 0,
-  backgroundEnabled: number = 0, // boolean
-  paletteInHeader: number = 0, // boolean
-  rleEnabled: number = 0 // boolean
+  options?: PixelOptions
 ) {
+  if (options) {
+    console.log('options', options);
+  }
   let header = '';
   let lastByte = 0;
 
-  lastByte =
-    lastByte | (paletteInHeader << 2) | (backgroundEnabled << 1) | rleEnabled;
+  if (options) {
+    // TODO, use get bit and set bit to do this.
+    if (options.paletteInHeader && options.paletteInHeader == 1) {
+      lastByte |= 1 << 2;
+    }
+
+    if (options.backgroundEnabled && options.backgroundEnabled == 1) {
+      lastByte |= 1 << 1;
+    }
+
+    if (options.rleEnabled && options.rleEnabled == 1) {
+      lastByte |= 1;
+    }
+  }
 
   header += `${version.toString(16).padStart(2, '0')}`;
   header += `${width.toString(16).padStart(2, '0')}`;
   header += `${height.toString(16).padStart(2, '0')}`;
   header += `${nColors.toString(16).padStart(4, '0')}`;
-  header += `${backgroundColorIndex.toString(16).padStart(2, '0')}`;
+
+  if (options && options.backgroundColorIndex) {
+    header += `${options.backgroundColorIndex.toString(16).padStart(2, '0')}`;
+  } else {
+    header += '00';
+  }
+
   header += '000'; // reserved
   header += lastByte;
 
@@ -80,19 +105,34 @@ async function renderCubeHelix(
   renderer: XQSTRENDER,
   numRows: number,
   numCols: number,
-  numColors: number
+  numColors: number,
+  backgroundEnabled: number = 0,
+  backgroundColorIndex: number = 0
 ) {
+  const options: PixelOptions = {
+    backgroundEnabled,
+    backgroundColorIndex
+  };
   const data = `0x${generatePixelHeader(
     numCols,
     numRows,
-    numColors
+    numColors,
+    1,
+    options
   )}${generatePixels(numRows, numCols, numColors)}`;
 
   const result = await renderer.renderSVG(
     data,
     CUBEHELIX_SCALE.colors(numColors)
   );
-  expect(result).to.equal(getSVG(CUBEHELIX_SCALE, numRows, numCols, numColors));
+
+  // TODO fix getSVG to do both
+  if (backgroundEnabled) {
+  } else {
+    expect(result).to.equal(
+      getSVG(CUBEHELIX_SCALE, numRows, numCols, numColors)
+    );
+  }
   saveSVG(result, `NEW_HELIX_${numColors}COLORS_${numCols}x${numRows}`);
 }
 
@@ -276,8 +316,8 @@ describe('Renderer', () => {
   //   });
   // });
 
-  // // /* ~~~~~~~~~~~~~~ TEST 16 COLORS: 1x1 -> 56x56 ~~~~~~~~~~~~~~ */
-  for (let v = 48; v <= 56; v += 1) {
+  // /* ~~~~~~~~~~~~~~ TEST 16 COLORS: 1x1 -> 56x56 ~~~~~~~~~~~~~~ */
+  for (let v = 50; v <= 56; v += 1) {
     describe(`${v}x${v} - 16 Colors`, function () {
       it(`Should render ${v}x${v} with 16 Colors`, async function () {
         const WIDTH = v;
@@ -288,6 +328,26 @@ describe('Renderer', () => {
       });
     });
   }
+
+  // /* ~~~~~~~~~~~~~~ TEST 16 COLORS: 1x1 -> 56x56 BACKGROUND COLOR ~~~~~~~~~~~~~~ */
+  // for (let v = 48; v <= 56; v += 1) {
+  //   describe(`${v}x${v} - 16 Colors - Background Color`, function () {
+  //     it(`Should render ${v}x${v} with 16 Colors with a background color`, async function () {
+  //       const WIDTH = v;
+  //       const HEIGHT = v;
+  //       const NUM_COLORS = 16;
+
+  //       const done = await renderCubeHelix(
+  //         renderer,
+  //         HEIGHT,
+  //         WIDTH,
+  //         NUM_COLORS,
+  //         1,
+  //         4
+  //       );
+  //     });
+  //   });
+  // }
 
   // /* ~~~~~~~~~~~~~~ TEST 32 COLORS: 16x16 -> 56x56 ~~~~~~~~~~~~~~ */
   // for (let v = 16; v <= 56; v += 4) {
