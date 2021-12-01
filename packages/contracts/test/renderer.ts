@@ -101,6 +101,41 @@ function generatePixelHeader(
   return header;
 }
 
+async function renderCubeHelixRLE(
+  renderer: XQSTRENDER,
+  numRows: number,
+  numCols: number,
+  numColors: number,
+  backgroundEnabled: number = 0,
+  backgroundColorIndex: number = 0
+) {
+  const options: PixelOptions = {
+    backgroundEnabled,
+    backgroundColorIndex
+  };
+  const data = `0x${generatePixelHeader(
+    numCols,
+    numRows,
+    numColors,
+    1,
+    options
+  )}33000000111111112222222233333300`;
+
+  const result = await renderer.renderSVG(
+    data,
+    CUBEHELIX_SCALE.colors(numColors)
+  );
+
+  // TODO fix getSVG to do both
+  if (backgroundEnabled) {
+  } else {
+    // expect(result).to.equal(
+    //   getSVG(CUBEHELIX_SCALE, numRows, numCols, numColors)
+    // );
+  }
+  saveSVG(result, `NEW_HELIX_${numColors}COLORS_${numCols}x${numRows}`);
+}
+
 async function renderCubeHelix(
   renderer: XQSTRENDER,
   numRows: number,
@@ -376,17 +411,47 @@ describe('Renderer', () => {
   // }
 
   // // /* ~~~~~~~~~~~~~~ TEST 256 COLORS: 16x16 -> 56x56 ~~~~~~~~~~~~~~ */
-  for (let v = 60; v <= 64; v += 1) {
+  // for (let v = 56; v <= 56; v += 1) {
+  //   describe(`${v}x${v} - 256 Colors`, function () {
+  //     it(`Should render ${v}x${v} with 256 Colors`, async function () {
+  //       const WIDTH = v;
+  //       const HEIGHT = v;
+  //       const NUM_COLORS = 256;
+
+  //       const done = await renderCubeHelix(renderer, HEIGHT, WIDTH, NUM_COLORS);
+  //     });
+  //   });
+  // }
+
+  for (let v = 4; v <= 4; v += 1) {
     describe(`${v}x${v} - 256 Colors`, function () {
       it(`Should render ${v}x${v} with 256 Colors`, async function () {
         const WIDTH = v;
         const HEIGHT = v;
         const NUM_COLORS = 256;
 
-        const done = await renderCubeHelix(renderer, HEIGHT, WIDTH, NUM_COLORS);
+        const done = await renderCubeHelixRLE(
+          renderer,
+          HEIGHT,
+          WIDTH,
+          NUM_COLORS
+        );
       });
     });
   }
+
+  // describe(`26x13 - 256 Colors`, function () {
+  //   it(`Should render 26x13 with 256 Colors`, async function () {
+  //     const WIDTH = 33;
+  //     const HEIGHT = 11;
+  //     const NUM_COLORS = 256;
+
+  //     const done = await renderCubeHelix(renderer, HEIGHT, WIDTH, NUM_COLORS);
+  //   });
+  // });
+
+  // TODO test RLE
+  // TODO test all prime combonations
 
   // //   /* ~~~~~~~~~~~~~~ TEST 2 -> 16 COLORS: 56x56 ~~~~~~~~~~~~~~ */
   // for (let v = 2; v <= 16; v += 1) {

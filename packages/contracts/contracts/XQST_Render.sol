@@ -39,9 +39,9 @@ contract XQST_RENDER {
 
   struct SVGCursor {
     Pixel[8] pixels;
-    // Pixel[8] rlePixels;
+    Pixel[8] rlePixels;
     uint8 numColors;
-    // uint8 numRLEPixels;
+    uint8 numRLEPixels;
     bytes data;
   }
 
@@ -171,11 +171,127 @@ contract XQST_RENDER {
   }
 
   // TODO remove lookup business, have it in the right format
+  function rlePixel4(
+    SVGCursor memory pos,
+    uint256 offset,
+    string[] calldata palette
+  ) internal view returns (bytes memory) {
+    return
+      abi.encodePacked(
+        '<rect fill="',
+        palette[pos.rlePixels[0 + offset].colorIndex],
+        '" x="',
+        lookup[pos.rlePixels[0 + offset].x],
+        '" y="',
+        lookup[pos.rlePixels[0 + offset].y],
+        '" height="1" width="',
+        lookup[pos.rlePixels[0 + offset].width],
+        '"/><rect fill="',
+        palette[pos.rlePixels[1 + offset].colorIndex],
+        '" x="',
+        lookup[pos.rlePixels[1 + offset].x],
+        '" y="',
+        lookup[pos.rlePixels[1 + offset].y],
+        '" height="1" width="',
+        lookup[pos.rlePixels[1 + offset].width],
+        abi.encodePacked(
+          '"/><rect fill="',
+          palette[pos.rlePixels[2 + offset].colorIndex],
+          '" x="',
+          lookup[pos.rlePixels[2 + offset].x],
+          '" y="',
+          lookup[pos.rlePixels[2 + offset].y],
+          '" height="1" width="',
+          lookup[pos.rlePixels[2 + offset].width],
+          '"/><rect fill="',
+          palette[pos.rlePixels[3 + offset].colorIndex],
+          '" x="',
+          lookup[pos.rlePixels[3 + offset].x],
+          '" y="',
+          lookup[pos.rlePixels[3 + offset].y],
+          '" height="1" width="',
+          lookup[pos.rlePixels[3 + offset].width],
+          '"/>'
+        )
+      );
+  }
+
+  function rlePixel2(
+    SVGCursor memory pos,
+    uint256 offset,
+    string[] calldata palette
+  ) internal view returns (bytes memory) {
+    return
+      abi.encodePacked(
+        '<rect fill="',
+        palette[pos.rlePixels[0 + offset].colorIndex],
+        '" x="',
+        lookup[pos.rlePixels[0 + offset].x],
+        '" y="',
+        lookup[pos.rlePixels[0 + offset].y],
+        '" height="1" width="',
+        lookup[pos.rlePixels[0 + offset].width],
+        '"/><rect fill="',
+        palette[pos.rlePixels[1 + offset].colorIndex],
+        '" x="',
+        lookup[pos.rlePixels[1 + offset].x],
+        '" y="',
+        lookup[pos.rlePixels[1 + offset].y],
+        '" height="1" width="',
+        lookup[pos.rlePixels[1 + offset].width],
+        '"/>'
+      );
+  }
+
+  function rlePixel(
+    SVGCursor memory pos,
+    uint256 offset,
+    string[] calldata palette
+  ) internal view returns (bytes memory) {
+    return
+      abi.encodePacked(
+        '<rect fill="',
+        palette[pos.rlePixels[0 + offset].colorIndex],
+        '" x="',
+        lookup[pos.rlePixels[0 + offset].x],
+        '" y="',
+        lookup[pos.rlePixels[0 + offset].y],
+        '" height="1" width="1"/>'
+      );
+  }
+
+  function rlePixelN(SVGCursor memory pos, string[] calldata palette)
+    internal
+    view
+  {
+    uint256 remainingLength = pos.numRLEPixels;
+    uint256 index;
+
+    delete (pos.data);
+
+    while (remainingLength > 0) {
+      index = pos.numRLEPixels - remainingLength;
+
+      if (remainingLength % 2 == 0) {
+        pos.data = bytes.concat(pos.data, rlePixel2(pos, index, palette));
+        remainingLength -= 2;
+        continue;
+      }
+      pos.data = bytes.concat(pos.data, rlePixel(pos, index, palette));
+      remainingLength -= 1;
+      continue;
+    }
+
+    delete (pos.numRLEPixels);
+  }
+
+  // TODO remove lookup business, have it in the right format
   function pixel4(SVGCursor memory pos, uint256 offset)
     internal
     view
     returns (bytes memory)
   {
+    // console.log('pixel4');
     return
       abi.encodePacked(
         '<use href="#',
@@ -208,64 +324,12 @@ contract XQST_RENDER {
       );
   }
 
-  function pixel3(SVGCursor memory pos, uint256 offset)
-    internal
-    view
-    returns (bytes memory)
-  {
-    abi.encodePacked(
-      '<use href="#',
-      lookup[pos.pixels[0 + offset].colorIndex],
-      '" x="',
-      lookup[pos.pixels[0 + offset].x],
-      '" y="',
-      lookup[pos.pixels[0 + offset].y],
-      '"/><use href="#',
-      lookup[pos.pixels[1 + offset].colorIndex],
-      '" x="',
-      lookup[pos.pixels[1 + offset].x],
-      '" y="',
-      lookup[pos.pixels[1 + offset].y],
-      '"/><use href="#',
-      abi.encodePacked(
-        lookup[pos.pixels[2 + offset].colorIndex],
-        '" x="',
-        lookup[pos.pixels[2 + offset].x],
-        '" y="',
-        lookup[pos.pixels[2 + offset].y],
-        '"/>'
-      )
-    );
-  }
-
-  function pixel2(SVGCursor memory pos, uint256 offset)
-    internal
-    view
-    returns (bytes memory)
-  {
-    return
-      abi.encodePacked(
-        '<use href="#',
-        lookup[pos.pixels[0 + offset].colorIndex],
-        '" x="',
-        lookup[pos.pixels[0 + offset].x],
-        '" y="',
-        lookup[pos.pixels[0 + offset].y],
-        '"/><use href="#',
-        lookup[pos.pixels[1 + offset].colorIndex],
-        '" x="',
-        lookup[pos.pixels[1 + offset].x],
-        '" y="',
-        lookup[pos.pixels[1 + offset].y],
-        '"/>'
-      );
-  }
-
   function pixel(SVGCursor memory pos, uint256 offset)
     internal
     view
     returns (bytes memory)
   {
+    // console.log('pixel');
     return
       abi.encodePacked(
         '<use href="#',
@@ -292,16 +356,6 @@ contract XQST_RENDER {
         remainingLength -= 4;
         continue;
       }
-      if (remainingLength % 3 == 0) {
-        pos.data = bytes.concat(pos.data, pixel3(pos, index));
-        remainingLength -= 3;
-        continue;
-      }
-      if (remainingLength % 2 == 0) {
-        pos.data = bytes.concat(pos.data, pixel2(pos, index));
-        remainingLength -= 2;
-        continue;
-      }
       pos.data = bytes.concat(pos.data, pixel(pos, index));
       remainingLength -= 1;
       continue;
@@ -315,6 +369,9 @@ contract XQST_RENDER {
     uint256 pixelNum,
     SVGMetadata memory svgData
   ) internal view returns (uint8) {
+    console.log(data.length);
+    console.log(pixelNum);
+    console.log(svgData.dataStart);
     if (svgData.ppb == 1) {
       return uint8(data[pixelNum + svgData.dataStart]);
     }
@@ -361,59 +418,78 @@ contract XQST_RENDER {
     SVGCursor memory pos;
 
     uint8 colorIndex;
+    uint256 c;
+    uint256 pixelNum;
 
-    // TODO should this be one large rect?
-    for (uint256 pixelNum = 0; pixelNum < svgData.totalPixels; pixelNum) {
+    while (pixelNum < svgData.totalPixels) {
       // pos.x = uint8(pixelNum % svgData.width);
       // pos.y = uint8(pixelNum / svgData.width);
 
       // fill cursor
       // getColors(data, palette, pixelNum, svgData.width, pos, svgData);
 
-      while (pixelNum < svgData.totalPixels && pos.numColors < 8) {
-        colorIndex = _getColorIndex(data, pixelNum, svgData);
+      // while (pixelNum < svgData.totalPixels && pos.numColors < 8) {
+      colorIndex = _getColorIndex(data, pixelNum, svgData);
 
-        // If this color is the background we dont need to paint it with the cursor
-        // TODO it could be worth doing one of these checks outside the loop to save gas
-        if (
-          colorIndex == svgData.backgroundColorIndex && svgData.hasBackground
-        ) {
-          pixelNum++;
-          continue;
-        }
+      // If this color is the background we dont need to paint it with the cursor
+      // TODO it could be worth doing one of these checks outside the loop to save gas
+      if (colorIndex == svgData.backgroundColorIndex && svgData.hasBackground) {
+        pixelNum++;
+        continue;
+      }
 
-        // this is for RLE
-        // if (
-        //   pixelNum > 0 &&
-        //   pos.numColors > 0 &&
-        //   colorIndex == pos.pixels[pos.numColors - 1].colorIndex
-        // ) {
-        //   pos.pixels[pos.numColors - 1].width++;
-        //   pixelNum++;
-        //   continue;
-        // }
+      c = 1;
 
+      while ((pixelNum + c) % svgData.width != 0) {
+        if (colorIndex == _getColorIndex(data, pixelNum + c, svgData)) c++;
+        else break;
+      }
+
+      if (c > 1) {
+        pos.rlePixels[pos.numRLEPixels].width = uint8(c);
+        pos.rlePixels[pos.numRLEPixels].colorIndex = colorIndex;
+        pos.rlePixels[pos.numRLEPixels].x = uint8(pixelNum % svgData.width);
+        pos.rlePixels[pos.numRLEPixels].y = uint8(pixelNum / svgData.width);
+        pos.numRLEPixels++;
+      } else {
         pos.pixels[pos.numColors].width = 1;
         pos.pixels[pos.numColors].colorIndex = colorIndex;
         pos.pixels[pos.numColors].x = uint8(pixelNum % svgData.width);
         pos.pixels[pos.numColors].y = uint8(pixelNum / svgData.width);
-
-        pixelNum++;
         pos.numColors++;
       }
 
-      pixelN(pos);
+      pixelNum += c; // doing this costs significant gas? why?
+      if (pos.numColors == 8 || pixelNum == svgData.totalPixels) {
+        pixelN(pos);
 
-      buffers.workingBuffer[buffers.currWorkingBufSize] = pos.data;
-      buffers.currWorkingBufSize++;
+        buffers.workingBuffer[buffers.currWorkingBufSize] = pos.data;
+        buffers.currWorkingBufSize++;
 
-      if (buffers.currWorkingBufSize == buffers.maxWorkingBufSize) {
-        buffers.outputBuffer[buffers.currOutputBufSize] = packN(
-          buffers.workingBuffer,
-          buffers.currWorkingBufSize
-        );
-        buffers.currOutputBufSize++;
-        buffers.currWorkingBufSize = 0;
+        if (buffers.currWorkingBufSize == buffers.maxWorkingBufSize) {
+          buffers.outputBuffer[buffers.currOutputBufSize] = packN(
+            buffers.workingBuffer,
+            buffers.currWorkingBufSize
+          );
+          buffers.currOutputBufSize++;
+          buffers.currWorkingBufSize = 0;
+        }
+      }
+
+      if (pos.numRLEPixels == 8 || pixelNum == svgData.totalPixels) {
+        rlePixelN(pos, palette);
+
+        buffers.workingBuffer[buffers.currWorkingBufSize] = pos.data;
+        buffers.currWorkingBufSize++;
+
+        if (buffers.currWorkingBufSize == buffers.maxWorkingBufSize) {
+          buffers.outputBuffer[buffers.currOutputBufSize] = packN(
+            buffers.workingBuffer,
+            buffers.currWorkingBufSize
+          );
+          buffers.currOutputBufSize++;
+          buffers.currWorkingBufSize = 0;
+        }
       }
     }
 
@@ -508,9 +584,7 @@ contract XQST_RENDER {
     internal
     view
   {
-    console.log('init symbols');
-    console.log('palette length: ', palette.length);
-    bytes[] memory symbolBuffer = new bytes[](16);
+    bytes[] memory symbolBuffer = new bytes[](16); // TODO tune buffer size
     uint256 symbolBufferSize = 0;
 
     for (uint256 i = 0; i < palette.length; i++) {
