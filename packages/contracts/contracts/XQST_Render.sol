@@ -29,7 +29,6 @@ contract XQST_RENDER {
   string constant PATH_START_DATA = '" d="';
   string constant END_TAG = '"/>';
 
-  // TODO play with this, it can be a heavy buffer to deal with, probably because of the string
   struct Pixel {
     uint8 x;
     uint8 y;
@@ -129,7 +128,6 @@ contract XQST_RENDER {
     view
     returns (bytes memory)
   {
-    uint256 startGas = gasleft();
     bytes memory packedData;
     uint256 remainingLength = length;
     uint256 index;
@@ -256,7 +254,9 @@ contract XQST_RENDER {
         lookup[pos.rlePixels[0 + offset].x],
         '" y="',
         lookup[pos.rlePixels[0 + offset].y],
-        '" height="1" width="1"/>'
+        '" height="1" width="',
+        lookup[pos.rlePixels[0 + offset].width],
+        '"/>'
       );
   }
 
@@ -364,53 +364,7 @@ contract XQST_RENDER {
     delete (pos.numColors);
   }
 
-  function _getColorIndex(
-    bytes memory data,
-    uint256 pixelNum,
-    SVGMetadata memory svgData
-  ) internal view returns (uint8) {
-    console.log(data.length);
-    console.log(pixelNum);
-    console.log(svgData.dataStart);
-    if (svgData.ppb == 1) {
-      return uint8(data[pixelNum + svgData.dataStart]);
-    }
-
-    return
-      uint8(
-        (uint8(data[pixelNum / svgData.ppb + svgData.dataStart]) >>
-          ((8 - svgData.bpp) - ((pixelNum % svgData.ppb) * svgData.bpp))) &
-          svgData.mask
-      );
-  }
-
-  // TODO: for Data format
-  // function getColors(
-  //   bytes memory data,
-  //   string[] calldata palette,
-  //   uint256 pixelNum,
-  //   uint256 numCol,
-  //   SVGCursor memory pos,
-  //   SVGMetadata memory svgData
-  // ) internal view {
-  //   uint8 i;
-
-  //   uint8 min = 4 < numCol ? 4 : uint8(numCol);
-
-  //   for (i = 0; i < min; i++) {
-  //     uint8 colorIndex = _getColorIndex(data, pixelNum + i, svgData);
-  //     pos.color[i] = palette[colorIndex];
-
-  //     if ((pixelNum + i) % numCol == (numCol - 1)) {
-  //       i++;
-  //       break;
-  //     }
-  //   }
-  //   pos.numColors = i;
-  // }
-
   function getRectSVG(
-    bytes memory data,
     string[] calldata palette,
     SVGMetadata memory svgData,
     SVGBuffers memory buffers
@@ -422,17 +376,9 @@ contract XQST_RENDER {
     uint256 pixelNum;
 
     while (pixelNum < svgData.totalPixels) {
-      // pos.x = uint8(pixelNum % svgData.width);
-      // pos.y = uint8(pixelNum / svgData.width);
-
-      // fill cursor
-      // getColors(data, palette, pixelNum, svgData.width, pos, svgData);
-
-      // while (pixelNum < svgData.totalPixels && pos.numColors < 8) {
-      colorIndex = _getColorIndex(data, pixelNum, svgData);
+      colorIndex = svgData.colorIndexLookup[pixelNum];
 
       // If this color is the background we dont need to paint it with the cursor
-      // TODO it could be worth doing one of these checks outside the loop to save gas
       if (colorIndex == svgData.backgroundColorIndex && svgData.hasBackground) {
         pixelNum++;
         continue;
@@ -441,7 +387,7 @@ contract XQST_RENDER {
       c = 1;
 
       while ((pixelNum + c) % svgData.width != 0) {
-        if (colorIndex == _getColorIndex(data, pixelNum + c, svgData)) c++;
+        if (colorIndex == svgData.colorIndexLookup[pixelNum + c]) c++;
         else break;
       }
 
@@ -523,6 +469,8 @@ contract XQST_RENDER {
     uint16 paletteStart;
     uint16 dataStart;
     /* CALCULATED DATA END */
+
+    uint8[] colorIndexLookup;
   }
 
   struct SVGBuffers {
@@ -532,6 +480,48 @@ contract XQST_RENDER {
     uint16 maxOutputBufSize;
     bytes[] outputBuffer;
     bytes[] workingBuffer;
+  }
+
+  function _setColorIndexLookup(bytes memory data, SVGMetadata memory svgData)
+    internal
+    view
+  {
+    uint256 startGas = gasleft();
+    uint8 workingByte;
+    svgData.colorIndexLookup = new uint8[](svgData.totalPixels + 8); // add extra byte for safety
+    if (svgData.bpp == 1) {
+      for (uint256 i = 0; i < svgData.totalPixels; i += 8) {
+        workingByte = uint8(data[i / 8 + svgData.dataStart]);
+        svgData.colorIndexLookup[i] = workingByte >> 7;
+        svgData.colorIndexLookup[i + 1] = (workingByte >> 6) & 0x01;
+        svgData.colorIndexLookup[i + 2] = (workingByte >> 5) & 0x01;
+        svgData.colorIndexLookup[i + 3] = (workingByte >> 4) & 0x01;
+        svgData.colorIndexLookup[i + 4] = (workingByte >> 3) & 0x01;
+        svgData.colorIndexLookup[i + 5] = (workingByte >> 2) & 0x01;
+        svgData.colorIndexLookup[i + 6] = (workingByte >> 1) & 0x01;
+        svgData.colorIndexLookup[i + 7] = workingByte & 0x01;
+      }
+    } else if (svgData.bpp == 2) {
+      for (uint256 i = 0; i < svgData.totalPixels; i += 4) {
+        workingByte = uint8(data[i / 4 + svgData.dataStart]);
+        svgData.colorIndexLookup[i] = workingByte >> 6;
+        svgData.colorIndexLookup[i + 1] = (workingByte >> 4) & 0x03;
+        svgData.colorIndexLookup[i + 2] = (workingByte >> 2) & 0x03;
+        svgData.colorIndexLookup[i + 3] = workingByte & 0x03;
+      }
+    } else if (svgData.bpp == 4) {
+      for (uint256 i = 0; i < svgData.totalPixels; i += 2) {
+        workingByte = uint8(data[i / 2 + svgData.dataStart]);
+        svgData.colorIndexLookup[i] = workingByte >> 4;
+        svgData.colorIndexLookup[i + 1] = workingByte & 0x0F;
+      }
+    } else {
+      for (uint256 i = 0; i < svgData.totalPixels; i++) {
+        svgData.colorIndexLookup[i] = uint8(data[i + svgData.dataStart]);
+      }
+    }
+
+    console.log('color lut builing gas used', startGas - gasleft());
   }
 
   /* RECT RENDERER */
@@ -547,18 +537,21 @@ contract XQST_RENDER {
     require(palette.length > 0, 'cannot have 0 colors');
     require(data.length >= 8, 'missing header');
 
+    console.logBytes(data);
+
     uint256 startGas = gasleft();
     SVGMetadata memory svgData;
     SVGBuffers memory buffers;
 
     /* Setup the SVG */
-    _decodeHeader(data, svgData, 1);
+    _decodeHeader(data, svgData);
     _setupBuffers(svgData, buffers, palette);
     _initSymbols(palette, buffers);
+    _setColorIndexLookup(data, svgData);
 
     console.log('num colors: ', svgData.numColors);
 
-    getRectSVG(data, palette, svgData, buffers);
+    getRectSVG(palette, svgData, buffers);
 
     console.log('Gas Used Rect', startGas - gasleft());
     console.log('Gas Left Rect', gasleft());
@@ -611,11 +604,10 @@ contract XQST_RENDER {
     console.log('symbols done');
   }
 
-  function _decodeHeader(
-    bytes memory data,
-    SVGMetadata memory svgMetadata,
-    uint256 depth
-  ) internal view returns (SVGMetadata memory) {
+  function _decodeHeader(bytes memory data, SVGMetadata memory svgMetadata)
+    internal
+    view
+  {
     uint64 header;
 
     assembly {
@@ -677,8 +669,13 @@ contract XQST_RENDER {
     buffers.currOutputBufSize = 0;
 
     // TODO tune max sizes
+    // buffers.maxWorkingBufSize = (
+    //   (meta.height >= meta.width)
+    //     ? meta.height / 2 < 10 ? 10 : meta.height / 2
+    //     : meta.width / 2
+    // );
     buffers.maxWorkingBufSize = (
-      (meta.height >= meta.width) ? meta.height / 2 : meta.width / 2 + 5
+      (meta.height >= meta.width) ? meta.height / 2 + 5 : meta.width / 2 + 5
     );
     buffers.maxOutputBufSize = buffers.maxWorkingBufSize;
     buffers.outputBuffer = new bytes[](buffers.maxOutputBufSize);
@@ -720,11 +717,11 @@ contract XQST_RENDER {
     returns (SVGMetadata memory)
   {
     SVGMetadata memory svgMetadata;
-    _decodeHeader(data, svgMetadata, 0);
+    _decodeHeader(data, svgMetadata);
     return svgMetadata;
   }
 
-  function _setColorParams(SVGMetadata memory svgData) internal view {
+  function _setColorParams(SVGMetadata memory svgData) internal pure {
     if (svgData.numColors > 16) {
       // Use 256 Colors
       svgData.bpp = 8;

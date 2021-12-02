@@ -6,6 +6,15 @@ import chroma from 'chroma-js';
 
 import { XQSTRENDER, Numbers } from '../typechain';
 
+const PRIME_NUMBERS = [
+  2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53
+]; // 16 prime numbers
+const POWERS_OF_TWO = [1, 2, 4, 8, 16, 32, 64, 128, 256]; // 9 powers of 2
+const ODD_NUMBERS = [9, 15, 21, 27, 33, 35, 45, 51]; // 8 odd numbers
+const EVEN_NUMBERS = [6, 10, 24, 36, 42, 48, 52, 56]; // 8 even numbers
+const ONE = [1]; // 1 one
+const BASIC_COLOR_DEPTHS = [1, 2, 4, 16, 27, 56, 157, 256]; // covers (one, 1bpp, 2bpp, 4bpp, odd, even, prime, 8bpp)
+
 const RAINBOW_SCALE = chroma
   .scale(['#f00', '#0f0', '#00f', '#f00'])
   .mode('hsl');
@@ -34,16 +43,16 @@ function getSVG(
   return expectedSVG;
 }
 
-function saveSVG(data: string, name: string) {
+function saveSVG(data: string, suiteName: string, name: string) {
   // mkdir test/svg
-  fs.mkdir('test/svg', (e) => {
+  fs.mkdir(`test/svg/${suiteName}`, (e) => {
     if (e && e.code != 'EEXIST') {
       console.log(e);
     }
   });
-  fs.writeFile(`test/svg/${name}.svg`, data, (e) => {
+  fs.writeFile(`test/svg/${suiteName}/${name}.svg`, data, (e) => {
     if (e) console.log(e);
-    else console.log(`wrote test/svg/${name}.svg`);
+    else console.log(`wrote test/svg/${suiteName}/${name}.svg`);
   });
 }
 
@@ -96,13 +105,14 @@ function generatePixelHeader(
   header += '000'; // reserved
   header += lastByte;
 
-  console.log(header);
+  console.log('0x' + header);
 
   return header;
 }
 
 async function renderCubeHelixRLE(
   renderer: XQSTRENDER,
+  suiteName: string,
   numRows: number,
   numCols: number,
   numColors: number,
@@ -133,11 +143,16 @@ async function renderCubeHelixRLE(
     //   getSVG(CUBEHELIX_SCALE, numRows, numCols, numColors)
     // );
   }
-  saveSVG(result, `NEW_HELIX_${numColors}COLORS_${numCols}x${numRows}`);
+  saveSVG(
+    result,
+    suiteName,
+    `NEW_HELIX_${numColors}COLORS_${numCols}x${numRows}`
+  );
 }
 
 async function renderCubeHelix(
   renderer: XQSTRENDER,
+  suiteName: string,
   numRows: number,
   numCols: number,
   numColors: number,
@@ -168,11 +183,16 @@ async function renderCubeHelix(
     //   getSVG(CUBEHELIX_SCALE, numRows, numCols, numColors)
     // );
   }
-  saveSVG(result, `NEW_HELIX_${numColors}COLORS_${numCols}x${numRows}`);
+  saveSVG(
+    result,
+    suiteName,
+    `NEW_HELIX_${numColors}COLORS_${numCols}x${numRows}`
+  );
 }
 
 async function renderRainbow(
   renderer: XQSTRENDER,
+  suiteName: string,
   numRows: number,
   numCols: number,
   numColors: number
@@ -187,7 +207,11 @@ async function renderRainbow(
     data,
     RAINBOW_SCALE.colors(numColors)
   );
-  saveSVG(result, `RAINBOW_${numColors}COLORS_${numCols}x${numRows}`);
+  saveSVG(
+    result,
+    suiteName,
+    `RAINBOW_${numColors}COLORS_${numCols}x${numRows}`
+  );
 }
 
 function generatePixels8bpp(nRows: number, nCols: number, nColors: number) {
@@ -263,6 +287,46 @@ describe('Renderer', () => {
       console.log(result);
     });
   });
+
+  /* ~~~~~~~~~~~~~~ TEST 1 -> 256 COLORS: 56x56 ~~~~~~~~~~~~~~ */
+  for (let cdIndex = 0; cdIndex < BASIC_COLOR_DEPTHS.length; cdIndex++) {
+    for (let size = 1; size <= 56; size++) {
+      describe(`${size}x${size} - ${BASIC_COLOR_DEPTHS[cdIndex]} Colors`, function () {
+        it(`Should render ${size}x${size} with ${BASIC_COLOR_DEPTHS[cdIndex]} Colors`, async function () {
+          const WIDTH = size;
+          const HEIGHT = size;
+          const NUM_COLORS = BASIC_COLOR_DEPTHS[cdIndex];
+
+          const done = await renderCubeHelix(
+            renderer,
+            'SWEEP_BASIC_COLORS_AND_ALL_SQUARE_SIZES',
+            HEIGHT,
+            WIDTH,
+            NUM_COLORS
+          );
+        });
+      });
+    }
+  }
+
+  /* ~~~~~~~~~~~~~~ TEST 1 -> 256 COLORS: 56x56 ~~~~~~~~~~~~~~ */
+  // for (let v = 1; v <= 256; v += 1) {
+  //   describe(`56x56 - ${v} Colors`, function () {
+  //     it(`Should render 56x56 with ${v} Colors`, async function () {
+  //       const WIDTH = 56;
+  //       const HEIGHT = 56;
+  //       const NUM_COLORS = v;
+
+  //       const done = await renderCubeHelix(
+  //         renderer,
+  //         'SWEEP_ALL_COLORS_56x56',
+  //         HEIGHT,
+  //         WIDTH,
+  //         NUM_COLORS
+  //       );
+  //     });
+  //   });
+  // }
 
   // /* ~~~~~~~~~~~~~~ TEST 2 COLORS: 16x16 -> 56x56 ~~~~~~~~~~~~~~ */
   // for (let v = 48; v <= 56; v += 4) {
@@ -423,22 +487,23 @@ describe('Renderer', () => {
   //   });
   // }
 
-  for (let v = 4; v <= 4; v += 1) {
-    describe(`${v}x${v} - 256 Colors`, function () {
-      it(`Should render ${v}x${v} with 256 Colors`, async function () {
-        const WIDTH = v;
-        const HEIGHT = v;
-        const NUM_COLORS = 256;
+  // for (let v = 4; v <= 4; v += 1) {
+  //   describe(`${v}x${v} - 256 Colors`, function () {
+  //     it(`Should render ${v}x${v} with 256 Colors`, async function () {
+  //       const WIDTH = v;
+  //       const HEIGHT = v;
+  //       const NUM_COLORS = 256;
 
-        const done = await renderCubeHelixRLE(
-          renderer,
-          HEIGHT,
-          WIDTH,
-          NUM_COLORS
-        );
-      });
-    });
-  }
+  //       const done = await renderCubeHelixRLE(
+  //         renderer,
+
+  //         HEIGHT,
+  //         WIDTH,
+  //         NUM_COLORS
+  //       );
+  //     });
+  //   });
+  // }
 
   // describe(`26x13 - 256 Colors`, function () {
   //   it(`Should render 26x13 with 256 Colors`, async function () {
