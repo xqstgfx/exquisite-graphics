@@ -6,7 +6,9 @@ import './interfaces/INumbers.sol';
 
 contract XQST_RENDER {
   // prettier-ignore
-  string[256] lookup = ['0','1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29','30','31','32','33','34','35','36','37','38','39','40','41','42','43','44','45','46','47','48','49','50','51','52','53','54','55','56','57','58','59','60','61','62','63','64','65','66','67','68','69','70','71','72','73','74','75','76','77','78','79','80','81','82','83','84','85','86','87','88','89','90','91','92','93','94','95','96','97','98','99','100','101','102','103','104','105','106','107','108','109','110','111','112','113','114','115','116','117','118','119','120','121','122','123','124','125','126','127','128','129','130','131','132','133','134','135','136','137','138','139','140','141','142','143','144','145','146','147','148','149','150','151','152','153','154','155','156','157','158','159','160','161','162','163','164','165','166','167','168','169','170','171','172','173','174','175','176','177','178','179','180','181','182','183','184','185','186','187','188','189','190','191','192','193','194','195','196','197','198','199','200','201','202','203','204','205','206','207','208','209','210','211','212','213','214','215','216','217','218','219','220','221','222','223','224','225','226','227','228','229','230','231','232','233','234','235','236','237','238','239','240','241','242','243','244','245','246','247','248','249','250','251','252','253','254','255'];
+  // TODO make this a bytes[]? bytes4[]?
+  // string[256] lookup = ['0','1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29','30','31','32','33','34','35','36','37','38','39','40','41','42','43','44','45','46','47','48','49','50','51','52','53','54','55','56','57','58','59','60','61','62','63','64','65','66','67','68','69','70','71','72','73','74','75','76','77','78','79','80','81','82','83','84','85','86','87','88','89','90','91','92','93','94','95','96','97','98','99','100','101','102','103','104','105','106','107','108','109','110','111','112','113','114','115','116','117','118','119','120','121','122','123','124','125','126','127','128','129','130','131','132','133','134','135','136','137','138','139','140','141','142','143','144','145','146','147','148','149','150','151','152','153','154','155','156','157','158','159','160','161','162','163','164','165','166','167','168','169','170','171','172','173','174','175','176','177','178','179','180','181','182','183','184','185','186','187','188','189','190','191','192','193','194','195','196','197','198','199','200','201','202','203','204','205','206','207','208','209','210','211','212','213','214','215','216','217','218','219','220','221','222','223','224','225','226','227','228','229','230','231','232','233','234','235','236','237','238','239','240','241','242','243','244','245','246','247','248','249','250','251','252','253','254','255'];
+  /* Divide - Return quotient and remainder */
 
   uint16 constant MAX_COLORS = 256;
   uint8 constant MAX_ROWS = 64;
@@ -16,18 +18,9 @@ contract XQST_RENDER {
   INumbers private _numbers;
 
   // TODO: incorporate this into the interface, or directly into the rendering step
-  string constant PATH_SVG_OPENER =
-    '<svg xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" version="1.1" viewBox="0 -0.5 ';
   string constant RECT_SVG_OPENER =
     '<svg xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" version="1.1" viewBox="0 0 ';
-  string constant RECT_STYLES = '<style>rect{height:1px;width:1px;}</style>';
   string constant RECT_TRANSFORM = '<g transform="scale(16 16)">';
-  string constant CLOSE_SVG_OPENER = '">';
-  string constant PATH_SVG_CLOSER = '</g></svg>';
-  string constant RECT_PREFIX = '<rect fill="';
-  string constant PATH_PREFIX = '<path stroke="';
-  string constant PATH_START_DATA = '" d="';
-  string constant END_TAG = '"/>';
 
   struct Pixel {
     uint8 x;
@@ -168,99 +161,53 @@ contract XQST_RENDER {
     return packedData;
   }
 
-  // TODO remove lookup business, have it in the right format
-  function rlePixel4(
-    SVGCursor memory pos,
-    uint256 offset,
-    string[] calldata palette
-  ) internal view returns (bytes memory) {
-    return
-      abi.encodePacked(
-        '<rect fill="',
-        palette[pos.rlePixels[0 + offset].colorIndex],
-        '" x="',
-        lookup[pos.rlePixels[0 + offset].x],
-        '" y="',
-        lookup[pos.rlePixels[0 + offset].y],
-        '" height="1" width="',
-        lookup[pos.rlePixels[0 + offset].width],
-        '"/><rect fill="',
-        palette[pos.rlePixels[1 + offset].colorIndex],
-        '" x="',
-        lookup[pos.rlePixels[1 + offset].x],
-        '" y="',
-        lookup[pos.rlePixels[1 + offset].y],
-        '" height="1" width="',
-        lookup[pos.rlePixels[1 + offset].width],
-        abi.encodePacked(
-          '"/><rect fill="',
-          palette[pos.rlePixels[2 + offset].colorIndex],
-          '" x="',
-          lookup[pos.rlePixels[2 + offset].x],
-          '" y="',
-          lookup[pos.rlePixels[2 + offset].y],
-          '" height="1" width="',
-          lookup[pos.rlePixels[2 + offset].width],
-          '"/><rect fill="',
-          palette[pos.rlePixels[3 + offset].colorIndex],
-          '" x="',
-          lookup[pos.rlePixels[3 + offset].x],
-          '" y="',
-          lookup[pos.rlePixels[3 + offset].y],
-          '" height="1" width="',
-          lookup[pos.rlePixels[3 + offset].width],
-          '"/>'
-        )
-      );
-  }
-
   function rlePixel2(
     SVGCursor memory pos,
-    uint256 offset,
-    string[] calldata palette
+    SVGMetadata memory metadata,
+    uint256 offset
   ) internal view returns (bytes memory) {
     return
       abi.encodePacked(
         '<rect fill="',
-        palette[pos.rlePixels[0 + offset].colorIndex],
+        metadata.palette[pos.rlePixels[0 + offset].colorIndex],
         '" x="',
-        lookup[pos.rlePixels[0 + offset].x],
+        metadata.lookup[pos.rlePixels[0 + offset].x],
         '" y="',
-        lookup[pos.rlePixels[0 + offset].y],
+        metadata.lookup[pos.rlePixels[0 + offset].y],
         '" height="1" width="',
-        lookup[pos.rlePixels[0 + offset].width],
+        metadata.lookup[pos.rlePixels[0 + offset].width],
         '"/><rect fill="',
-        palette[pos.rlePixels[1 + offset].colorIndex],
+        metadata.palette[pos.rlePixels[1 + offset].colorIndex],
         '" x="',
-        lookup[pos.rlePixels[1 + offset].x],
+        metadata.lookup[pos.rlePixels[1 + offset].x],
         '" y="',
-        lookup[pos.rlePixels[1 + offset].y],
+        metadata.lookup[pos.rlePixels[1 + offset].y],
         '" height="1" width="',
-        lookup[pos.rlePixels[1 + offset].width],
+        metadata.lookup[pos.rlePixels[1 + offset].width],
         '"/>'
       );
   }
 
   function rlePixel(
     SVGCursor memory pos,
-    uint256 offset,
-    string[] calldata palette
+    SVGMetadata memory metadata,
+    uint256 offset
   ) internal view returns (bytes memory) {
     return
       abi.encodePacked(
-        '<rect fill="',
-        palette[pos.rlePixels[0 + offset].colorIndex],
+        '<rect fill="#',
+        metadata.palette[pos.rlePixels[0 + offset].colorIndex],
         '" x="',
-        lookup[pos.rlePixels[0 + offset].x],
+        metadata.lookup[pos.rlePixels[0 + offset].x],
         '" y="',
-        lookup[pos.rlePixels[0 + offset].y],
+        metadata.lookup[pos.rlePixels[0 + offset].y],
         '" height="1" width="',
-        lookup[pos.rlePixels[0 + offset].width],
+        metadata.lookup[pos.rlePixels[0 + offset].width],
         '"/>'
       );
   }
 
-  function rlePixelN(SVGCursor memory pos, string[] calldata palette)
+  function rlePixelN(SVGCursor memory pos, SVGMetadata memory metadata)
     internal
     view
   {
@@ -273,11 +220,11 @@ contract XQST_RENDER {
       index = pos.numRLEPixels - remainingLength;
 
       if (remainingLength % 2 == 0) {
-        pos.data = bytes.concat(pos.data, rlePixel2(pos, index, palette));
+        pos.data = bytes.concat(pos.data, rlePixel2(pos, metadata, index));
         remainingLength -= 2;
         continue;
       }
-      pos.data = bytes.concat(pos.data, rlePixel(pos, index, palette));
+      pos.data = bytes.concat(pos.data, rlePixel(pos, metadata, index));
       remainingLength -= 1;
       continue;
     }
@@ -286,63 +233,66 @@ contract XQST_RENDER {
   }
 
   // TODO remove lookup business, have it in the right format
-  function pixel4(SVGCursor memory pos, uint256 offset)
-    internal
-    view
-    returns (bytes memory)
-  {
+  function pixel4(
+    SVGCursor memory pos,
+    uint256 offset,
+    SVGMetadata memory metadata
+  ) internal view returns (bytes memory) {
     // console.log('pixel4');
     return
       abi.encodePacked(
         '<use href="#',
-        lookup[pos.pixels[0 + offset].colorIndex],
+        metadata.lookup[pos.pixels[0 + offset].colorIndex],
         '" x="',
-        lookup[pos.pixels[0 + offset].x],
+        metadata.lookup[pos.pixels[0 + offset].x],
         '" y="',
-        lookup[pos.pixels[0 + offset].y],
+        metadata.lookup[pos.pixels[0 + offset].y],
         '"/><use href="#',
-        lookup[pos.pixels[1 + offset].colorIndex],
+        metadata.lookup[pos.pixels[1 + offset].colorIndex],
         '" x="',
-        lookup[pos.pixels[1 + offset].x],
+        metadata.lookup[pos.pixels[1 + offset].x],
         '" y="',
-        lookup[pos.pixels[1 + offset].y],
+        metadata.lookup[pos.pixels[1 + offset].y],
         '"/><use href="#',
         abi.encodePacked(
-          lookup[pos.pixels[2 + offset].colorIndex],
+          metadata.lookup[pos.pixels[2 + offset].colorIndex],
           '" x="',
-          lookup[pos.pixels[2 + offset].x],
+          metadata.lookup[pos.pixels[2 + offset].x],
           '" y="',
-          lookup[pos.pixels[2 + offset].y],
+          metadata.lookup[pos.pixels[2 + offset].y],
           '"/><use href="#',
-          lookup[pos.pixels[3 + offset].colorIndex],
+          metadata.lookup[pos.pixels[3 + offset].colorIndex],
           '" x="',
-          lookup[pos.pixels[3 + offset].x],
+          metadata.lookup[pos.pixels[3 + offset].x],
           '" y="',
-          lookup[pos.pixels[3 + offset].y],
+          metadata.lookup[pos.pixels[3 + offset].y],
           '"/>'
         )
       );
   }
 
-  function pixel(SVGCursor memory pos, uint256 offset)
-    internal
-    view
-    returns (bytes memory)
-  {
+  function pixel(
+    SVGCursor memory pos,
+    uint256 offset,
+    SVGMetadata memory metadata
+  ) internal view returns (bytes memory) {
     // console.log('pixel');
     return
       abi.encodePacked(
         '<use href="#',
-        lookup[pos.pixels[0 + offset].colorIndex],
+        metadata.lookup[pos.pixels[0 + offset].colorIndex],
         '" x="',
-        lookup[pos.pixels[0 + offset].x],
+        metadata.lookup[pos.pixels[0 + offset].x],
         '" y="',
-        lookup[pos.pixels[0 + offset].y],
+        metadata.lookup[pos.pixels[0 + offset].y],
         '"/>'
       );
   }
 
-  function pixelN(SVGCursor memory pos) internal view {
+  function pixelN(SVGCursor memory pos, SVGMetadata memory metadata)
+    internal
+    view
+  {
     uint256 remainingLength = pos.numColors;
     uint256 index;
 
@@ -352,11 +302,11 @@ contract XQST_RENDER {
       index = pos.numColors - remainingLength;
 
       if (remainingLength % 4 == 0) {
-        pos.data = bytes.concat(pos.data, pixel4(pos, index));
+        pos.data = bytes.concat(pos.data, pixel4(pos, index, metadata));
         remainingLength -= 4;
         continue;
       }
-      pos.data = bytes.concat(pos.data, pixel(pos, index));
+      pos.data = bytes.concat(pos.data, pixel(pos, index, metadata));
       remainingLength -= 1;
       continue;
     }
@@ -364,11 +314,10 @@ contract XQST_RENDER {
     delete (pos.numColors);
   }
 
-  function getRectSVG(
-    string[] calldata palette,
-    SVGMetadata memory svgData,
-    SVGBuffers memory buffers
-  ) public view {
+  function getRectSVG(SVGMetadata memory svgData, SVGBuffers memory buffers)
+    public
+    view
+  {
     SVGCursor memory pos;
 
     uint8 colorIndex;
@@ -407,7 +356,7 @@ contract XQST_RENDER {
 
       pixelNum += c; // doing this costs significant gas? why?
       if (pos.numColors == 8 || pixelNum == svgData.totalPixels) {
-        pixelN(pos);
+        pixelN(pos, svgData);
 
         buffers.workingBuffer[buffers.currWorkingBufSize] = pos.data;
         buffers.currWorkingBufSize++;
@@ -423,7 +372,7 @@ contract XQST_RENDER {
       }
 
       if (pos.numRLEPixels == 8 || pixelNum == svgData.totalPixels) {
-        rlePixelN(pos, palette);
+        rlePixelN(pos, svgData);
 
         buffers.workingBuffer[buffers.currWorkingBufSize] = pos.data;
         buffers.currWorkingBufSize++;
@@ -471,6 +420,8 @@ contract XQST_RENDER {
     /* CALCULATED DATA END */
 
     uint8[] colorIndexLookup;
+    bytes8[] palette;
+    bytes[] lookup;
   }
 
   struct SVGBuffers {
@@ -525,7 +476,7 @@ contract XQST_RENDER {
   }
 
   /* RECT RENDERER */
-  function renderSVG(bytes memory data, string[] calldata palette)
+  function renderSVG(bytes memory data, bytes8[] calldata palette)
     public
     view
     returns (string memory)
@@ -545,13 +496,13 @@ contract XQST_RENDER {
 
     /* Setup the SVG */
     _decodeHeader(data, svgData);
-    _setupBuffers(svgData, buffers, palette);
-    _initSymbols(palette, buffers);
+    _setupBuffers(svgData, buffers);
+    _initSymbols(buffers, svgData);
     _setColorIndexLookup(data, svgData);
 
     console.log('num colors: ', svgData.numColors);
 
-    getRectSVG(palette, svgData, buffers);
+    getRectSVG(svgData, buffers);
 
     console.log('Gas Used Rect', startGas - gasleft());
     console.log('Gas Left Rect', gasleft());
@@ -573,24 +524,28 @@ contract XQST_RENDER {
     return result;
   }
 
-  function _initSymbols(string[] calldata palette, SVGBuffers memory buffers)
+  function _initSymbols(SVGBuffers memory buffers, SVGMetadata memory svgData)
     internal
     view
   {
     bytes[] memory symbolBuffer = new bytes[](16); // TODO tune buffer size
+    svgData.lookup = new bytes[](svgData.palette.length);
     uint256 symbolBufferSize = 0;
 
-    for (uint256 i = 0; i < palette.length; i++) {
+    for (uint256 i = 0; i < svgData.palette.length; i++) {
+      svgData.lookup[i] = _numbers.getNum8(uint8(i));
+
       symbolBuffer[symbolBufferSize] = abi.encodePacked(
         symbolBuffer[symbolBufferSize],
         '<symbol id="',
-        lookup[i],
-        '" width="1" height="1" viewBox="0 0 1 1"><rect fill="',
-        palette[i],
+        svgData.lookup[i],
+        '" width="1" height="1" viewBox="0 0 1 1"><rect fill="#',
+        svgData.palette[i],
+        // palette[i],
         '" width="1" height="1"/></symbol>'
       );
 
-      if ((i > 0 && i % 16 == 0) || i == palette.length - 1) {
+      if ((i > 0 && i % 16 == 0) || i == svgData.palette.length - 1) {
         symbolBufferSize++;
       }
     }
@@ -626,8 +581,25 @@ contract XQST_RENDER {
     svgMetadata.totalPixels = svgMetadata.width * svgMetadata.height;
     svgMetadata.paletteStart = svgMetadata.hasPalette ? 8 : 0;
     svgMetadata.dataStart = svgMetadata.hasPalette
-      ? (svgMetadata.numColors * 4) + 8
+      ? (svgMetadata.numColors * 8) + 8
       : 8;
+
+    // TODO require that the palette data section is the correct length
+
+    bytes8[] memory p = new bytes8[](svgMetadata.numColors);
+    bytes8 d;
+    uint256 offset = 32 + svgMetadata.paletteStart;
+    for (uint256 i = 0; i < svgMetadata.numColors; i++) {
+      assembly {
+        d := mload(add(data, offset))
+      }
+      // console.log('color', string(abi.encodePacked(d)));
+      p[i] = d;
+      offset += 8;
+    }
+
+    svgMetadata.palette = p;
+    // console.logBytes(abi.encodePacked(p));
 
     _setColorParams(svgMetadata);
 
@@ -660,11 +632,10 @@ contract XQST_RENDER {
     // );
   }
 
-  function _setupBuffers(
-    SVGMetadata memory meta,
-    SVGBuffers memory buffers,
-    string[] calldata palette
-  ) internal view {
+  function _setupBuffers(SVGMetadata memory meta, SVGBuffers memory buffers)
+    internal
+    view
+  {
     buffers.currWorkingBufSize = 0;
     buffers.currOutputBufSize = 0;
 
@@ -690,12 +661,12 @@ contract XQST_RENDER {
         _numbers.getNum(meta.height * 16),
         '">',
         RECT_TRANSFORM,
-        '<rect fill="',
-        palette[meta.backgroundColorIndex],
+        '<rect fill=#"',
+        meta.palette[meta.backgroundColorIndex],
         '" height="',
-        lookup[meta.height],
+        meta.lookup[meta.height],
         '" width="',
-        lookup[meta.width],
+        meta.lookup[meta.width],
         '"/>'
       );
     } else {
