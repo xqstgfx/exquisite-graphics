@@ -380,7 +380,7 @@ describe('Renderer', () => {
   // }
 
   /* ~~~~~~~~~~~~~~ TEST 1 -> 256 COLORS: 56x56 ~~~~~~~~~~~~~~ */
-  for (let v = 127; v <= 127; v += 1) {
+  for (let v = 1; v <= 1; v += 1) {
     describe(`56x56 - ${v} Colors`, function () {
       it(`Should render 56x56 with ${v} Colors`, async function () {
         const WIDTH = 56;

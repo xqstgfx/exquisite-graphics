@@ -5,11 +5,6 @@ import 'hardhat/console.sol';
 import './interfaces/INumbers.sol';
 
 contract XQST_RENDER {
-  // prettier-ignore
-  // TODO make this a bytes[]? bytes4[]?
-  // string[256] lookup = ['0','1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29','30','31','32','33','34','35','36','37','38','39','40','41','42','43','44','45','46','47','48','49','50','51','52','53','54','55','56','57','58','59','60','61','62','63','64','65','66','67','68','69','70','71','72','73','74','75','76','77','78','79','80','81','82','83','84','85','86','87','88','89','90','91','92','93','94','95','96','97','98','99','100','101','102','103','104','105','106','107','108','109','110','111','112','113','114','115','116','117','118','119','120','121','122','123','124','125','126','127','128','129','130','131','132','133','134','135','136','137','138','139','140','141','142','143','144','145','146','147','148','149','150','151','152','153','154','155','156','157','158','159','160','161','162','163','164','165','166','167','168','169','170','171','172','173','174','175','176','177','178','179','180','181','182','183','184','185','186','187','188','189','190','191','192','193','194','195','196','197','198','199','200','201','202','203','204','205','206','207','208','209','210','211','212','213','214','215','216','217','218','219','220','221','222','223','224','225','226','227','228','229','230','231','232','233','234','235','236','237','238','239','240','241','242','243','244','245','246','247','248','249','250','251','252','253','254','255'];
-  /* Divide - Return quotient and remainder */
-
   uint16 constant MAX_COLORS = 256;
   uint8 constant MAX_ROWS = 64;
   uint8 constant MAX_COLS = 64;
@@ -17,15 +12,10 @@ contract XQST_RENDER {
 
   INumbers private _numbers;
 
-  // TODO: incorporate this into the interface, or directly into the rendering step
-  string constant RECT_SVG_OPENER =
-    '<svg xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" version="1.1" viewBox="0 0 ';
-  string constant RECT_TRANSFORM = '<g transform="scale(16 16)">';
-
   struct Pixel {
-    uint8 x;
-    uint8 y;
-    uint8 width;
+    bytes x;
+    bytes y;
+    bytes width;
     uint8 colorIndex;
   }
 
@@ -118,7 +108,7 @@ contract XQST_RENDER {
 
   function packN(bytes[] memory data, uint256 length)
     internal
-    view
+    pure
     returns (bytes memory)
   {
     bytes memory packedData;
@@ -165,25 +155,25 @@ contract XQST_RENDER {
     SVGCursor memory pos,
     SVGMetadata memory metadata,
     uint256 offset
-  ) internal view returns (bytes memory) {
+  ) internal pure returns (bytes memory) {
     return
       abi.encodePacked(
-        '<rect fill="',
+        '<rect fill="#',
         metadata.palette[pos.rlePixels[0 + offset].colorIndex],
         '" x="',
-        metadata.lookup[pos.rlePixels[0 + offset].x],
+        pos.rlePixels[0 + offset].x,
         '" y="',
-        metadata.lookup[pos.rlePixels[0 + offset].y],
+        pos.rlePixels[0 + offset].y,
         '" height="1" width="',
-        metadata.lookup[pos.rlePixels[0 + offset].width],
-        '"/><rect fill="',
+        pos.rlePixels[0 + offset].width,
+        '"/><rect fill="#',
         metadata.palette[pos.rlePixels[1 + offset].colorIndex],
         '" x="',
-        metadata.lookup[pos.rlePixels[1 + offset].x],
+        pos.rlePixels[1 + offset].x,
         '" y="',
-        metadata.lookup[pos.rlePixels[1 + offset].y],
+        pos.rlePixels[1 + offset].y,
         '" height="1" width="',
-        metadata.lookup[pos.rlePixels[1 + offset].width],
+        pos.rlePixels[1 + offset].width,
         '"/>'
       );
   }
@@ -192,24 +182,24 @@ contract XQST_RENDER {
     SVGCursor memory pos,
     SVGMetadata memory metadata,
     uint256 offset
-  ) internal view returns (bytes memory) {
+  ) internal pure returns (bytes memory) {
     return
       abi.encodePacked(
         '<rect fill="#',
         metadata.palette[pos.rlePixels[0 + offset].colorIndex],
         '" x="',
-        metadata.lookup[pos.rlePixels[0 + offset].x],
+        pos.rlePixels[0 + offset].x,
         '" y="',
-        metadata.lookup[pos.rlePixels[0 + offset].y],
+        pos.rlePixels[0 + offset].y,
         '" height="1" width="',
-        metadata.lookup[pos.rlePixels[0 + offset].width],
+        pos.rlePixels[0 + offset].width,
         '"/>'
       );
   }
 
   function rlePixelN(SVGCursor memory pos, SVGMetadata memory metadata)
     internal
-    view
+    pure
   {
     uint256 remainingLength = pos.numRLEPixels;
     uint256 index;
@@ -237,35 +227,35 @@ contract XQST_RENDER {
     SVGCursor memory pos,
     uint256 offset,
     SVGMetadata memory metadata
-  ) internal view returns (bytes memory) {
+  ) internal pure returns (bytes memory) {
     // console.log('pixel4');
     return
       abi.encodePacked(
         '<use href="#',
         metadata.lookup[pos.pixels[0 + offset].colorIndex],
         '" x="',
-        metadata.lookup[pos.pixels[0 + offset].x],
+        pos.pixels[0 + offset].x,
         '" y="',
-        metadata.lookup[pos.pixels[0 + offset].y],
+        pos.pixels[0 + offset].y,
         '"/><use href="#',
         metadata.lookup[pos.pixels[1 + offset].colorIndex],
         '" x="',
-        metadata.lookup[pos.pixels[1 + offset].x],
+        pos.pixels[1 + offset].x,
         '" y="',
-        metadata.lookup[pos.pixels[1 + offset].y],
+        pos.pixels[1 + offset].y,
         '"/><use href="#',
         abi.encodePacked(
           metadata.lookup[pos.pixels[2 + offset].colorIndex],
           '" x="',
-          metadata.lookup[pos.pixels[2 + offset].x],
+          pos.pixels[2 + offset].x,
           '" y="',
-          metadata.lookup[pos.pixels[2 + offset].y],
+          pos.pixels[2 + offset].y,
           '"/><use href="#',
           metadata.lookup[pos.pixels[3 + offset].colorIndex],
           '" x="',
-          metadata.lookup[pos.pixels[3 + offset].x],
+          pos.pixels[3 + offset].x,
           '" y="',
-          metadata.lookup[pos.pixels[3 + offset].y],
+          pos.pixels[3 + offset].y,
           '"/>'
         )
       );
@@ -275,23 +265,23 @@ contract XQST_RENDER {
     SVGCursor memory pos,
     uint256 offset,
     SVGMetadata memory metadata
-  ) internal view returns (bytes memory) {
+  ) internal pure returns (bytes memory) {
     // console.log('pixel');
     return
       abi.encodePacked(
         '<use href="#',
         metadata.lookup[pos.pixels[0 + offset].colorIndex],
         '" x="',
-        metadata.lookup[pos.pixels[0 + offset].x],
+        pos.pixels[0 + offset].x,
         '" y="',
-        metadata.lookup[pos.pixels[0 + offset].y],
+        pos.pixels[0 + offset].y,
         '"/>'
       );
   }
 
   function pixelN(SVGCursor memory pos, SVGMetadata memory metadata)
     internal
-    view
+    pure
   {
     uint256 remainingLength = pos.numColors;
     uint256 index;
@@ -316,7 +306,7 @@ contract XQST_RENDER {
 
   function getRectSVG(SVGMetadata memory svgData, SVGBuffers memory buffers)
     public
-    view
+    pure
   {
     SVGCursor memory pos;
 
@@ -341,16 +331,20 @@ contract XQST_RENDER {
       }
 
       if (c > 1) {
-        pos.rlePixels[pos.numRLEPixels].width = uint8(c);
+        pos.rlePixels[pos.numRLEPixels].width = svgData.lookup[c];
         pos.rlePixels[pos.numRLEPixels].colorIndex = colorIndex;
-        pos.rlePixels[pos.numRLEPixels].x = uint8(pixelNum % svgData.width);
-        pos.rlePixels[pos.numRLEPixels].y = uint8(pixelNum / svgData.width);
+        pos.rlePixels[pos.numRLEPixels].x = svgData.lookup[
+          pixelNum % svgData.width
+        ];
+        pos.rlePixels[pos.numRLEPixels].y = svgData.lookup[
+          pixelNum / svgData.width
+        ];
         pos.numRLEPixels++;
       } else {
-        pos.pixels[pos.numColors].width = 1;
+        pos.pixels[pos.numColors].width = svgData.lookup[1];
         pos.pixels[pos.numColors].colorIndex = colorIndex;
-        pos.pixels[pos.numColors].x = uint8(pixelNum % svgData.width);
-        pos.pixels[pos.numColors].y = uint8(pixelNum / svgData.width);
+        pos.pixels[pos.numColors].x = svgData.lookup[pixelNum % svgData.width];
+        pos.pixels[pos.numColors].y = svgData.lookup[pixelNum / svgData.width];
         pos.numColors++;
       }
 
@@ -421,7 +415,7 @@ contract XQST_RENDER {
 
     uint8[] colorIndexLookup;
     bytes8[] palette;
-    bytes[] lookup;
+    bytes[] lookup; // number lookup table
   }
 
   struct SVGBuffers {
@@ -488,19 +482,16 @@ contract XQST_RENDER {
     require(palette.length > 0, 'cannot have 0 colors');
     require(data.length >= 8, 'missing header');
 
-    console.logBytes(data);
-
     uint256 startGas = gasleft();
     SVGMetadata memory svgData;
     SVGBuffers memory buffers;
 
     /* Setup the SVG */
     _decodeHeader(data, svgData);
+    _setupNumberLookup(svgData);
     _setupBuffers(svgData, buffers);
     _initSymbols(buffers, svgData);
     _setColorIndexLookup(data, svgData);
-
-    console.log('num colors: ', svgData.numColors);
 
     getRectSVG(svgData, buffers);
 
@@ -524,24 +515,32 @@ contract XQST_RENDER {
     return result;
   }
 
+  function _setupNumberLookup(SVGMetadata memory svgData) internal view {
+    uint256 max;
+
+    max = (svgData.width > svgData.height ? svgData.width : svgData.height) + 1;
+    max = svgData.numColors > max ? svgData.numColors : max;
+
+    svgData.lookup = new bytes[](max);
+    for (uint256 i = 0; i < max; i++) {
+      svgData.lookup[i] = _numbers.getNum8(uint8(i));
+    }
+  }
+
   function _initSymbols(SVGBuffers memory buffers, SVGMetadata memory svgData)
     internal
-    view
+    pure
   {
     bytes[] memory symbolBuffer = new bytes[](16); // TODO tune buffer size
-    svgData.lookup = new bytes[](svgData.palette.length);
     uint256 symbolBufferSize = 0;
 
     for (uint256 i = 0; i < svgData.palette.length; i++) {
-      svgData.lookup[i] = _numbers.getNum8(uint8(i));
-
       symbolBuffer[symbolBufferSize] = abi.encodePacked(
         symbolBuffer[symbolBufferSize],
         '<symbol id="',
         svgData.lookup[i],
         '" width="1" height="1" viewBox="0 0 1 1"><rect fill="#',
         svgData.palette[i],
-        // palette[i],
         '" width="1" height="1"/></symbol>'
       );
 
@@ -555,13 +554,11 @@ contract XQST_RENDER {
       packN(symbolBuffer, symbolBufferSize)
     );
     buffers.currOutputBufSize++;
-
-    console.log('symbols done');
   }
 
   function _decodeHeader(bytes memory data, SVGMetadata memory svgMetadata)
     internal
-    view
+    pure
   {
     uint64 header;
 
@@ -593,13 +590,11 @@ contract XQST_RENDER {
       assembly {
         d := mload(add(data, offset))
       }
-      // console.log('color', string(abi.encodePacked(d)));
       p[i] = d;
       offset += 8;
     }
 
     svgMetadata.palette = p;
-    // console.logBytes(abi.encodePacked(p));
 
     _setColorParams(svgMetadata);
 
@@ -619,12 +614,12 @@ contract XQST_RENDER {
       );
     }
 
-    console.log(
-      'expected data len',
-      svgMetadata.dataStart + (svgMetadata.totalPixels / svgMetadata.ppb),
-      'actual data len',
-      data.length
-    );
+    // console.log(
+    //   'expected data len',
+    //   svgMetadata.dataStart + (svgMetadata.totalPixels / svgMetadata.ppb),
+    //   'actual data len',
+    //   data.length
+    // );
     // require(
     //   data.length ==
     //     svgMetadata.dataStart + (svgMetadata.totalPixels / svgMetadata.ppb),
@@ -653,15 +648,12 @@ contract XQST_RENDER {
     buffers.workingBuffer = new bytes[](buffers.maxWorkingBufSize);
 
     if (meta.hasBackground) {
-      console.log('has background');
       buffers.outputBuffer[0] = abi.encodePacked(
-        RECT_SVG_OPENER,
+        '<svg xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" version="1.1" viewBox="0 0 ',
         _numbers.getNum(meta.width * 16),
         ' ',
         _numbers.getNum(meta.height * 16),
-        '">',
-        RECT_TRANSFORM,
-        '<rect fill=#"',
+        '"><g transform="scale(16 16)"><rect fill=#"',
         meta.palette[meta.backgroundColorIndex],
         '" height="',
         meta.lookup[meta.height],
@@ -670,21 +662,19 @@ contract XQST_RENDER {
         '"/>'
       );
     } else {
-      console.log('no background');
       buffers.outputBuffer[0] = abi.encodePacked(
-        RECT_SVG_OPENER,
+        '<svg xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" version="1.1" viewBox="0 0 ',
         _numbers.getNum(meta.width * 16),
         ' ',
         _numbers.getNum(meta.height * 16),
-        '">',
-        RECT_TRANSFORM
+        '"><g transform="scale(16 16)">'
       );
     }
   }
 
   function decodeHeader(bytes calldata data)
     public
-    view
+    pure
     returns (SVGMetadata memory)
   {
     SVGMetadata memory svgMetadata;
