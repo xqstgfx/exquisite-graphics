@@ -5,6 +5,7 @@ import fs from 'fs';
 import chroma from 'chroma-js';
 
 import { XQSTRENDER, Numbers } from '../typechain';
+import { arrayify } from '@ethersproject/bytes';
 
 const PRIME_NUMBERS = [
   2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53
@@ -60,7 +61,6 @@ type PixelOptions = {
   backgroundEnabled?: number;
   backgroundColorIndex?: number;
   paletteInHeader?: number;
-  rleEnabled?: number;
 };
 
 function generatePixelHeader(
@@ -79,14 +79,10 @@ function generatePixelHeader(
   if (options) {
     // TODO, use get bit and set bit to do this.
     if (options.paletteInHeader && options.paletteInHeader == 1) {
-      lastByte |= 1 << 2;
-    }
-
-    if (options.backgroundEnabled && options.backgroundEnabled == 1) {
       lastByte |= 1 << 1;
     }
 
-    if (options.rleEnabled && options.rleEnabled == 1) {
+    if (options.backgroundEnabled && options.backgroundEnabled == 1) {
       lastByte |= 1;
     }
   }
@@ -220,7 +216,7 @@ async function renderCubeHelix(
   numRows: number,
   numCols: number,
   numColors: number,
-  backgroundEnabled: number = 0,
+  backgroundEnabled: number = 1,
   backgroundColorIndex: number = 0,
   paletteInHeader: number = 1
 ) {
@@ -344,13 +340,17 @@ describe('Renderer', () => {
 
   describe(`Get Header`, function () {
     it(`Should get the header`, async function () {
-      const WIDTH = 1;
-      const HEIGHT = 2;
-      const NUM_COLORS = 2;
+      const WIDTH = 16;
+      const HEIGHT = 16;
+      const NUM_COLORS = 16;
 
       // console.log('0x0110100010C02000' + generatePixels(16, 16, 16).slice(2));
       const result = await renderer.decodeHeader(
-        '0x' + generatePixelHeader(16, 16, 16) + generatePixels(16, 16, 16)
+        '0x' +
+          generatePixelHeader(WIDTH, HEIGHT, NUM_COLORS) +
+          generatePixels(WIDTH, HEIGHT, NUM_COLORS),
+        RAINBOW_SCALE.colors(NUM_COLORS).map((c) => `0x${getDataHexString(c)}`)
+        // ['0x1111222233334444']
         // generatePixels(16, 16, 16)
       );
       console.log(result);
@@ -380,7 +380,7 @@ describe('Renderer', () => {
   // }
 
   /* ~~~~~~~~~~~~~~ TEST 1 -> 256 COLORS: 56x56 ~~~~~~~~~~~~~~ */
-  for (let v = 1; v <= 1; v += 1) {
+  for (let v = 256; v <= 256; v += 1) {
     describe(`56x56 - ${v} Colors`, function () {
       it(`Should render 56x56 with ${v} Colors`, async function () {
         const WIDTH = 56;

@@ -1,3 +1,5 @@
+// TODO figure out how this thing should be organized
+
 type rgba = { r: number; g: number; b: number; a: number };
 type PixelColor = string | rgba;
 type Palette = PixelColor[];
@@ -40,27 +42,19 @@ const getBinarySVG_Map = (pixels: Map<{ x: number; y: number }, string>) => {};
    and the inner array represents x and returns the binary format for the renderer */
 const getBinarySVG_2DArr = (pixels: string[][]) => {};
 
-/* 
-FUNCTION SET 2 
-
-Functions where the dev supplies the palette and the index of the color
-they are using directly
-*/
-const getBinarySVG_ArrayIndexed = (
-  pixels: { x: number; y: number; color: number }[],
-  palette: string[]
-) => {};
-const getBinarySVG_MapIndexed = (
-  pixels: Map<{ x: number; y: number }, number>,
-  palette: string[]
-) => {};
-const getBinarySVG_2DArrIndexed = (pixels: number[][]) => {};
-
-// const getSVG_Array = (pixels: Pixel[], width: number, height: number) => {};
-// const getSVG_Map = (pixels: PixelMap) => {};
-// const getSVG_2DArr = (pixels: Pixel2DArr) => {};
+// TODO add support for the ndarray concept that scott pointed out
 
 // Functions for Hardcore Builders working with binary pixel format directly
+
+type PixelBufferOptions = {
+  width: number;
+  height: number;
+  numColors: number;
+  paletteIncluded?: boolean;
+  palette?: string[];
+  backgroundIncluded?: boolean;
+  backgroundIndex: number;
+};
 
 const CreatePixelBuffer = (
   width: number,
