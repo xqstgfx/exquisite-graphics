@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import 'hardhat/console.sol';
+// import 'hardhat/console.sol';
 import './interfaces/INumbers.sol';
 
 contract XQST_RENDER {
@@ -38,7 +38,7 @@ contract XQST_RENDER {
     bytes[] buffer;
   }
 
-  struct SVGHeader {
+  struct SVGMetadata {
     uint8 version;
     uint16 width;
     uint16 height;
@@ -47,41 +47,22 @@ contract XQST_RENDER {
     uint8 reserved; // Reserved for future use
     bool hasPalette;
     bool hasBackground;
+    /* Calculated Metadata */
+    uint16 totalPixels;
+    uint8 bpp;
+    uint8 ppb;
+    uint16 paletteStart;
+    uint16 dataStart;
   }
 
   struct SVG {
-    SVGHeader header;
+    SVGMetadata meta;
     uint8[] data;
     bytes8[] palette;
     SVGBuffers buffers;
     SVGCursor cursor;
     // Int to Bytes
     bytes[] numberLUT;
-  }
-
-  struct SVGMetadata {
-    /* HEADER START */
-    uint8 version;
-    uint16 width;
-    uint16 height;
-    uint16 numColors;
-    uint8 backgroundColorIndex;
-    uint8 reserved; // Reserved for future use
-    bool hasPalette;
-    bool hasBackground;
-    /* HEADER END */
-
-    /* CALCULATED DATA START */
-    uint16 totalPixels;
-    uint8 bpp;
-    uint8 ppb;
-    uint16 paletteStart;
-    uint16 dataStart;
-    /* CALCULATED DATA END */
-
-    uint8[] colorIndexLookup;
-    bytes8[] palette;
-    bytes[] lookup; // number lookup table
   }
 
   constructor(address numbersAddr_) {
@@ -163,7 +144,6 @@ contract XQST_RENDER {
     return bytes.concat(data[startIndex], data[startIndex + 1]);
   }
 
-  // TODO should this just take SVGBuffer? And then rename SVGBuffer to Buffer?
   function packN(bytes[] memory data, uint256 length)
     internal
     pure
@@ -209,284 +189,279 @@ contract XQST_RENDER {
     return packedData;
   }
 
-  function rlePixel2(
-    SVGCursor memory pos,
-    SVGMetadata memory metadata,
-    uint256 offset
-  ) internal pure returns (bytes memory) {
-    return
-      abi.encodePacked(
-        '<rect fill="#',
-        metadata.palette[pos.rlePixels[0 + offset].colorIndex],
-        '" x="',
-        pos.rlePixels[0 + offset].x,
-        '" y="',
-        pos.rlePixels[0 + offset].y,
-        '" height="1" width="',
-        pos.rlePixels[0 + offset].width,
-        '"/><rect fill="#',
-        metadata.palette[pos.rlePixels[1 + offset].colorIndex],
-        '" x="',
-        pos.rlePixels[1 + offset].x,
-        '" y="',
-        pos.rlePixels[1 + offset].y,
-        '" height="1" width="',
-        pos.rlePixels[1 + offset].width,
-        '"/>'
-      );
-  }
-
-  function rlePixel(
-    SVGCursor memory pos,
-    SVGMetadata memory metadata,
-    uint256 offset
-  ) internal pure returns (bytes memory) {
-    return
-      abi.encodePacked(
-        '<rect fill="#',
-        metadata.palette[pos.rlePixels[0 + offset].colorIndex],
-        '" x="',
-        pos.rlePixels[0 + offset].x,
-        '" y="',
-        pos.rlePixels[0 + offset].y,
-        '" height="1" width="',
-        pos.rlePixels[0 + offset].width,
-        '"/>'
-      );
-  }
-
-  function rlePixelN(SVGCursor memory pos, SVGMetadata memory metadata)
+  function rlePixel2(SVG memory svg, uint256 offset)
     internal
     pure
+    returns (bytes memory)
   {
-    uint256 remainingLength = pos.numRLEPixels;
+    return
+      abi.encodePacked(
+        '<rect fill="#',
+        svg.palette[svg.cursor.rlePixels[0 + offset].colorIndex],
+        '" x="',
+        svg.cursor.rlePixels[0 + offset].x,
+        '" y="',
+        svg.cursor.rlePixels[0 + offset].y,
+        '" height="1" width="',
+        svg.cursor.rlePixels[0 + offset].width,
+        '"/><rect fill="#',
+        svg.palette[svg.cursor.rlePixels[1 + offset].colorIndex],
+        '" x="',
+        svg.cursor.rlePixels[1 + offset].x,
+        '" y="',
+        svg.cursor.rlePixels[1 + offset].y,
+        '" height="1" width="',
+        svg.cursor.rlePixels[1 + offset].width,
+        '"/>'
+      );
+  }
+
+  function rlePixel(SVG memory svg, uint256 offset)
+    internal
+    pure
+    returns (bytes memory)
+  {
+    return
+      abi.encodePacked(
+        '<rect fill="#',
+        svg.palette[svg.cursor.rlePixels[0 + offset].colorIndex],
+        '" x="',
+        svg.cursor.rlePixels[0 + offset].x,
+        '" y="',
+        svg.cursor.rlePixels[0 + offset].y,
+        '" height="1" width="',
+        svg.cursor.rlePixels[0 + offset].width,
+        '"/>'
+      );
+  }
+
+  function rlePixelN(SVG memory svg) internal pure {
+    uint256 remainingLength = svg.cursor.numRLEPixels;
     uint256 index;
 
-    delete (pos.data);
+    delete (svg.cursor.data);
 
     while (remainingLength > 0) {
-      index = pos.numRLEPixels - remainingLength;
+      index = svg.cursor.numRLEPixels - remainingLength;
 
       if (remainingLength % 2 == 0) {
-        pos.data = bytes.concat(pos.data, rlePixel2(pos, metadata, index));
+        svg.cursor.data = bytes.concat(svg.cursor.data, rlePixel2(svg, index));
         remainingLength -= 2;
         continue;
       }
-      pos.data = bytes.concat(pos.data, rlePixel(pos, metadata, index));
+      svg.cursor.data = bytes.concat(svg.cursor.data, rlePixel(svg, index));
       remainingLength -= 1;
       continue;
     }
 
-    delete (pos.numRLEPixels);
+    delete (svg.cursor.numRLEPixels);
   }
 
-  function pixel4(
-    SVGCursor memory pos,
-    uint256 offset,
-    SVGMetadata memory metadata
-  ) internal pure returns (bytes memory) {
+  function pixel4(SVG memory svg, uint256 offset)
+    internal
+    pure
+    returns (bytes memory)
+  {
     return
       abi.encodePacked(
         '<use href="#',
-        metadata.lookup[pos.pixels[0 + offset].colorIndex],
+        svg.numberLUT[svg.cursor.pixels[0 + offset].colorIndex],
         '" x="',
-        pos.pixels[0 + offset].x,
+        svg.cursor.pixels[0 + offset].x,
         '" y="',
-        pos.pixels[0 + offset].y,
+        svg.cursor.pixels[0 + offset].y,
         '"/><use href="#',
-        metadata.lookup[pos.pixels[1 + offset].colorIndex],
+        svg.numberLUT[svg.cursor.pixels[1 + offset].colorIndex],
         '" x="',
-        pos.pixels[1 + offset].x,
+        svg.cursor.pixels[1 + offset].x,
         '" y="',
-        pos.pixels[1 + offset].y,
+        svg.cursor.pixels[1 + offset].y,
         '"/><use href="#',
         abi.encodePacked(
-          metadata.lookup[pos.pixels[2 + offset].colorIndex],
+          svg.numberLUT[svg.cursor.pixels[2 + offset].colorIndex],
           '" x="',
-          pos.pixels[2 + offset].x,
+          svg.cursor.pixels[2 + offset].x,
           '" y="',
-          pos.pixels[2 + offset].y,
+          svg.cursor.pixels[2 + offset].y,
           '"/><use href="#',
-          metadata.lookup[pos.pixels[3 + offset].colorIndex],
+          svg.numberLUT[svg.cursor.pixels[3 + offset].colorIndex],
           '" x="',
-          pos.pixels[3 + offset].x,
+          svg.cursor.pixels[3 + offset].x,
           '" y="',
-          pos.pixels[3 + offset].y,
+          svg.cursor.pixels[3 + offset].y,
           '"/>'
         )
       );
   }
 
-  function pixel(
-    SVGCursor memory pos,
-    uint256 offset,
-    SVGMetadata memory metadata
-  ) internal pure returns (bytes memory) {
+  function pixel(SVG memory svg, uint256 offset)
+    internal
+    pure
+    returns (bytes memory)
+  {
     // console.log('pixel');
     return
       abi.encodePacked(
         '<use href="#',
-        metadata.lookup[pos.pixels[0 + offset].colorIndex],
+        svg.numberLUT[svg.cursor.pixels[0 + offset].colorIndex],
         '" x="',
-        pos.pixels[0 + offset].x,
+        svg.cursor.pixels[0 + offset].x,
         '" y="',
-        pos.pixels[0 + offset].y,
+        svg.cursor.pixels[0 + offset].y,
         '"/>'
       );
   }
 
-  function pixelN(SVGCursor memory pos, SVGMetadata memory metadata)
-    internal
-    pure
-  {
-    uint256 remainingLength = pos.numColors;
+  function pixelN(SVG memory svg) internal pure {
+    uint256 remainingLength = svg.cursor.numColors;
     uint256 index;
 
-    delete (pos.data);
+    delete (svg.cursor.data);
 
     while (remainingLength > 0) {
-      index = pos.numColors - remainingLength;
+      index = svg.cursor.numColors - remainingLength;
 
       if (remainingLength % 4 == 0) {
-        pos.data = bytes.concat(pos.data, pixel4(pos, index, metadata));
+        svg.cursor.data = bytes.concat(svg.cursor.data, pixel4(svg, index));
         remainingLength -= 4;
         continue;
       }
-      pos.data = bytes.concat(pos.data, pixel(pos, index, metadata));
+      svg.cursor.data = bytes.concat(svg.cursor.data, pixel(svg, index));
       remainingLength -= 1;
       continue;
     }
 
-    delete (pos.numColors);
+    delete (svg.cursor.numColors);
   }
 
-  function getRectSVG(SVGMetadata memory svgData, SVGBuffers memory buffers)
-    public
-    pure
-  {
-    SVGCursor memory pos;
-
+  function getRectSVG(SVG memory svg) public pure {
     uint8 colorIndex;
     uint256 c;
     uint256 pixelNum;
 
-    while (pixelNum < svgData.totalPixels) {
-      colorIndex = svgData.colorIndexLookup[pixelNum];
+    while (pixelNum < svg.meta.totalPixels) {
+      colorIndex = svg.data[pixelNum];
 
       // If this color is the background we dont need to paint it with the cursor
-      if (colorIndex == svgData.backgroundColorIndex && svgData.hasBackground) {
+      if (
+        colorIndex == svg.meta.backgroundColorIndex && svg.meta.hasBackground
+      ) {
         pixelNum++;
         continue;
       }
 
       c = 1;
 
-      while ((pixelNum + c) % svgData.width != 0) {
-        if (colorIndex == svgData.colorIndexLookup[pixelNum + c]) c++;
+      while ((pixelNum + c) % svg.meta.width != 0) {
+        if (colorIndex == svg.data[pixelNum + c]) c++;
         else break;
       }
 
       if (c > 1) {
-        pos.rlePixels[pos.numRLEPixels].width = svgData.lookup[c];
-        pos.rlePixels[pos.numRLEPixels].colorIndex = colorIndex;
-        pos.rlePixels[pos.numRLEPixels].x = svgData.lookup[
-          pixelNum % svgData.width
+        svg.cursor.rlePixels[svg.cursor.numRLEPixels].width = svg.numberLUT[c];
+        svg.cursor.rlePixels[svg.cursor.numRLEPixels].colorIndex = colorIndex;
+        svg.cursor.rlePixels[svg.cursor.numRLEPixels].x = svg.numberLUT[
+          pixelNum % svg.meta.width
         ];
-        pos.rlePixels[pos.numRLEPixels].y = svgData.lookup[
-          pixelNum / svgData.width
+        svg.cursor.rlePixels[svg.cursor.numRLEPixels].y = svg.numberLUT[
+          pixelNum / svg.meta.width
         ];
-        pos.numRLEPixels++;
+        svg.cursor.numRLEPixels++;
       } else {
-        pos.pixels[pos.numColors].width = svgData.lookup[1];
-        pos.pixels[pos.numColors].colorIndex = colorIndex;
-        pos.pixels[pos.numColors].x = svgData.lookup[pixelNum % svgData.width];
-        pos.pixels[pos.numColors].y = svgData.lookup[pixelNum / svgData.width];
-        pos.numColors++;
+        svg.cursor.pixels[svg.cursor.numColors].width = svg.numberLUT[1];
+        svg.cursor.pixels[svg.cursor.numColors].colorIndex = colorIndex;
+        svg.cursor.pixels[svg.cursor.numColors].x = svg.numberLUT[
+          pixelNum % svg.meta.width
+        ];
+        svg.cursor.pixels[svg.cursor.numColors].y = svg.numberLUT[
+          pixelNum / svg.meta.width
+        ];
+        svg.cursor.numColors++;
       }
 
       pixelNum += c; // doing this costs significant gas? why?
-      if (pos.numColors == 8 || pixelNum == svgData.totalPixels) {
-        pixelN(pos, svgData);
+      if (svg.cursor.numColors == 8 || pixelNum == svg.meta.totalPixels) {
+        pixelN(svg);
 
-        buffers.working.buffer[buffers.working.size] = pos.data;
-        buffers.working.size++;
+        svg.buffers.working.buffer[svg.buffers.working.size] = svg.cursor.data;
+        svg.buffers.working.size++;
 
-        if (buffers.working.size == buffers.working.maxSize) {
-          buffers.output.buffer[buffers.output.size] = packN(
-            buffers.working.buffer,
-            buffers.working.size
+        if (svg.buffers.working.size == svg.buffers.working.maxSize) {
+          svg.buffers.output.buffer[svg.buffers.output.size] = packN(
+            svg.buffers.working.buffer,
+            svg.buffers.working.size
           );
-          buffers.output.size++;
-          buffers.working.size = 0;
+          svg.buffers.output.size++;
+          svg.buffers.working.size = 0;
         }
       }
 
-      if (pos.numRLEPixels == 8 || pixelNum == svgData.totalPixels) {
-        rlePixelN(pos, svgData);
+      if (svg.cursor.numRLEPixels == 8 || pixelNum == svg.meta.totalPixels) {
+        rlePixelN(svg);
 
-        buffers.working.buffer[buffers.working.size] = pos.data;
-        buffers.working.size++;
+        svg.buffers.working.buffer[svg.buffers.working.size] = svg.cursor.data;
+        svg.buffers.working.size++;
 
-        if (buffers.working.size == buffers.working.maxSize) {
-          buffers.output.buffer[buffers.output.size] = packN(
-            buffers.working.buffer,
-            buffers.working.size
+        if (svg.buffers.working.size == svg.buffers.working.maxSize) {
+          svg.buffers.output.buffer[svg.buffers.output.size] = packN(
+            svg.buffers.working.buffer,
+            svg.buffers.working.size
           );
-          buffers.output.size++;
-          buffers.working.size = 0;
+          svg.buffers.output.size++;
+          svg.buffers.working.size = 0;
         }
       }
     }
 
-    if (buffers.working.size > 0) {
-      buffers.output.buffer[buffers.output.size] = packN(
-        buffers.working.buffer,
-        buffers.working.size
+    if (svg.buffers.working.size > 0) {
+      svg.buffers.output.buffer[svg.buffers.output.size] = packN(
+        svg.buffers.working.buffer,
+        svg.buffers.working.size
       );
-      buffers.output.size++;
+      svg.buffers.output.size++;
     }
   }
 
-  function _setColorIndexLookup(bytes memory data, SVGMetadata memory svgData)
+  function _setColorIndexLookup(bytes memory data, SVG memory svg)
     internal
     view
   {
     uint256 startGas = gasleft();
     uint8 workingByte;
-    svgData.colorIndexLookup = new uint8[](svgData.totalPixels + 8); // add extra byte for safety
-    if (svgData.bpp == 1) {
-      for (uint256 i = 0; i < svgData.totalPixels; i += 8) {
-        workingByte = uint8(data[i / 8 + svgData.dataStart]);
-        svgData.colorIndexLookup[i] = workingByte >> 7;
-        svgData.colorIndexLookup[i + 1] = (workingByte >> 6) & 0x01;
-        svgData.colorIndexLookup[i + 2] = (workingByte >> 5) & 0x01;
-        svgData.colorIndexLookup[i + 3] = (workingByte >> 4) & 0x01;
-        svgData.colorIndexLookup[i + 4] = (workingByte >> 3) & 0x01;
-        svgData.colorIndexLookup[i + 5] = (workingByte >> 2) & 0x01;
-        svgData.colorIndexLookup[i + 6] = (workingByte >> 1) & 0x01;
-        svgData.colorIndexLookup[i + 7] = workingByte & 0x01;
+    svg.data = new uint8[](svg.meta.totalPixels + 8); // add extra byte for safety
+    if (svg.meta.bpp == 1) {
+      for (uint256 i = 0; i < svg.meta.totalPixels; i += 8) {
+        workingByte = uint8(data[i / 8 + svg.meta.dataStart]);
+        svg.data[i] = workingByte >> 7;
+        svg.data[i + 1] = (workingByte >> 6) & 0x01;
+        svg.data[i + 2] = (workingByte >> 5) & 0x01;
+        svg.data[i + 3] = (workingByte >> 4) & 0x01;
+        svg.data[i + 4] = (workingByte >> 3) & 0x01;
+        svg.data[i + 5] = (workingByte >> 2) & 0x01;
+        svg.data[i + 6] = (workingByte >> 1) & 0x01;
+        svg.data[i + 7] = workingByte & 0x01;
       }
-    } else if (svgData.bpp == 2) {
-      for (uint256 i = 0; i < svgData.totalPixels; i += 4) {
-        workingByte = uint8(data[i / 4 + svgData.dataStart]);
-        svgData.colorIndexLookup[i] = workingByte >> 6;
-        svgData.colorIndexLookup[i + 1] = (workingByte >> 4) & 0x03;
-        svgData.colorIndexLookup[i + 2] = (workingByte >> 2) & 0x03;
-        svgData.colorIndexLookup[i + 3] = workingByte & 0x03;
+    } else if (svg.meta.bpp == 2) {
+      for (uint256 i = 0; i < svg.meta.totalPixels; i += 4) {
+        workingByte = uint8(data[i / 4 + svg.meta.dataStart]);
+        svg.data[i] = workingByte >> 6;
+        svg.data[i + 1] = (workingByte >> 4) & 0x03;
+        svg.data[i + 2] = (workingByte >> 2) & 0x03;
+        svg.data[i + 3] = workingByte & 0x03;
       }
-    } else if (svgData.bpp == 4) {
-      for (uint256 i = 0; i < svgData.totalPixels; i += 2) {
-        workingByte = uint8(data[i / 2 + svgData.dataStart]);
-        svgData.colorIndexLookup[i] = workingByte >> 4;
-        svgData.colorIndexLookup[i + 1] = workingByte & 0x0F;
+    } else if (svg.meta.bpp == 4) {
+      for (uint256 i = 0; i < svg.meta.totalPixels; i += 2) {
+        workingByte = uint8(data[i / 2 + svg.meta.dataStart]);
+        svg.data[i] = workingByte >> 4;
+        svg.data[i + 1] = workingByte & 0x0F;
       }
     } else {
-      for (uint256 i = 0; i < svgData.totalPixels; i++) {
-        svgData.colorIndexLookup[i] = uint8(data[i + svgData.dataStart]);
+      for (uint256 i = 0; i < svg.meta.totalPixels; i++) {
+        svg.data[i] = uint8(data[i + svg.meta.dataStart]);
       }
     }
 
-    console.log('color lut builing gas used', startGas - gasleft());
+    // console.log('color lut builing gas used', startGas - gasleft());
   }
 
   /* RECT RENDERER */
@@ -497,94 +472,92 @@ contract XQST_RENDER {
   {
     require(data.length >= 8, 'missing header');
 
-    SVGMetadata memory svgData;
-    SVGBuffers memory buffers;
+    SVG memory svg;
     uint256 startGas = gasleft();
 
     /* Setup the SVG */
-    _decodeHeader(data, svgData, palette);
-    _setupNumberLookup(svgData);
-    _setupBuffers(svgData, buffers);
+    _decodeHeader(data, palette, svg);
+    _setupNumberLookup(svg);
+    _setupBuffers(svg);
 
-    if (svgData.numColors > 1 || !svgData.hasBackground) {
-      _initSymbols(buffers, svgData);
-      _setColorIndexLookup(data, svgData);
-      getRectSVG(svgData, buffers);
-      console.log('Gas Used Rect', startGas - gasleft());
-      console.log('Gas Left Rect', gasleft());
-      buffers.output.buffer[buffers.output.size - 1] = bytes.concat(
-        buffers.output.buffer[buffers.output.size - 1],
+    if (svg.meta.numColors > 1 || !svg.meta.hasBackground) {
+      _initSymbols(svg);
+      _setColorIndexLookup(data, svg);
+      getRectSVG(svg);
+      // console.log('Gas Used Rect', startGas - gasleft());
+      // console.log('Gas Left Rect', gasleft());
+      svg.buffers.output.buffer[svg.buffers.output.size - 1] = bytes.concat(
+        svg.buffers.output.buffer[svg.buffers.output.size - 1],
         '</g></svg>'
       );
     } else {
-      buffers.output.buffer[0] = bytes.concat(
-        buffers.output.buffer[0],
+      svg.buffers.output.buffer[0] = bytes.concat(
+        svg.buffers.output.buffer[0],
         '</g></svg>'
       );
-      buffers.output.size = 1;
+      svg.buffers.output.size = 1;
     }
 
     startGas = gasleft();
     // output the output buffer to string
     string memory result = string(
-      packN(buffers.output.buffer, buffers.output.size)
+      packN(svg.buffers.output.buffer, svg.buffers.output.size)
     );
 
-    console.log('Gas Used Result', startGas - gasleft());
-    console.log('Gas Left Result', gasleft());
+    // console.log('Gas Used Result', startGas - gasleft());
+    // console.log('Gas Left Result', gasleft());
 
     return result;
   }
 
-  function _setupNumberLookup(SVGMetadata memory svgData) internal view {
+  function _setupNumberLookup(SVG memory svg) internal view {
     uint256 max;
 
-    max = (svgData.width > svgData.height ? svgData.width : svgData.height) + 1;
-    max = svgData.numColors > max ? svgData.numColors : max;
+    max =
+      (svg.meta.width > svg.meta.height ? svg.meta.width : svg.meta.height) +
+      1;
+    max = svg.meta.numColors > max ? svg.meta.numColors : max;
 
-    svgData.lookup = new bytes[](max);
+    svg.numberLUT = new bytes[](max);
     for (uint256 i = 0; i < max; i++) {
-      svgData.lookup[i] = _numbers.getNum8(uint8(i));
+      svg.numberLUT[i] = _numbers.getNum8(uint8(i));
     }
   }
 
-  function _initSymbols(SVGBuffers memory buffers, SVGMetadata memory svgData)
-    internal
-    view
-  {
+  function _initSymbols(SVG memory svg) internal view {
     uint256 startGas = gasleft();
     uint16 bufSize = 16;
-    bytes[] memory symbolBuffer = new bytes[](bufSize); // TODO tune buffer size
+    bytes[] memory symbolBuffer = new bytes[](bufSize);
     uint256 symbolBufferSize = 0;
 
-    for (uint256 i = 0; i < svgData.palette.length; i++) {
+    for (uint256 i = 0; i < svg.palette.length; i++) {
       symbolBuffer[symbolBufferSize] = abi.encodePacked(
         symbolBuffer[symbolBufferSize],
         '<symbol id="',
-        svgData.lookup[i],
+        svg.numberLUT[i],
         '" width="1" height="1" viewBox="0 0 1 1"><rect fill="#',
-        svgData.palette[i],
+        svg.palette[i],
         '" width="1" height="1"/></symbol>'
       );
 
-      if ((i > 0 && i % bufSize == 0) || i == svgData.palette.length - 1) {
+      if ((i > 0 && i % bufSize == 0) || i == svg.palette.length - 1) {
         symbolBufferSize++;
       }
     }
 
-    buffers.output.buffer[0] = bytes.concat(
-      buffers.output.buffer[0],
+    svg.buffers.output.buffer[0] = bytes.concat(
+      svg.buffers.output.buffer[0],
       packN(symbolBuffer, symbolBufferSize)
     );
-    buffers.output.size++;
+    svg.buffers.output.size++;
 
-    console.log('Gas Used Init Symbols', startGas - gasleft());
+    // console.log('Gas Used Init Symbols', startGas - gasleft());
   }
 
   function _decodeHeader(
     bytes memory data,
-    SVGMetadata memory svgMetadata,
-    bytes8[] memory palette
+    bytes8[] memory palette,
+    SVG memory svg
   ) internal pure {
     uint64 header;
 
@@ -592,116 +565,107 @@ contract XQST_RENDER {
       header := mload(add(data, 8))
     }
 
-    svgMetadata.version = uint8(header >> 56);
-    svgMetadata.width = uint16((header >> 48) & 0xFF);
-    svgMetadata.height = uint16((header >> 40) & 0xFF);
-    svgMetadata.numColors = uint16(header >> 24);
-    svgMetadata.backgroundColorIndex = uint8(header >> 16);
-    svgMetadata.hasPalette = ((header >> 1) & 0x1) == 1 ? true : false;
-    svgMetadata.hasBackground = (header & 0x1) == 1 ? true : false;
+    svg.meta.version = uint8(header >> 56);
+    svg.meta.width = uint16((header >> 48) & 0xFF);
+    svg.meta.height = uint16((header >> 40) & 0xFF);
+    svg.meta.numColors = uint16(header >> 24);
+    svg.meta.backgroundColorIndex = uint8(header >> 16);
+    svg.meta.hasPalette = ((header >> 1) & 0x1) == 1 ? true : false;
+    svg.meta.hasBackground = (header & 0x1) == 1 ? true : false;
 
-    svgMetadata.totalPixels = svgMetadata.width * svgMetadata.height;
-    svgMetadata.paletteStart = svgMetadata.hasPalette ? 8 : 0;
-    svgMetadata.dataStart = svgMetadata.hasPalette
-      ? (svgMetadata.numColors * 8) + 8
-      : 8;
+    svg.meta.totalPixels = svg.meta.width * svg.meta.height;
+    svg.meta.paletteStart = svg.meta.hasPalette ? 8 : 0;
+    svg.meta.dataStart = svg.meta.hasPalette ? (svg.meta.numColors * 8) + 8 : 8;
 
+    require(svg.meta.height <= MAX_ROWS, 'number of rows is greater than max');
     require(
-      svgMetadata.height <= MAX_ROWS,
-      'number of rows is greater than max'
-    );
-    require(
-      svgMetadata.width <= MAX_COLS,
+      svg.meta.width <= MAX_COLS,
       'number of columns is greater than max'
     );
 
     require(
-      svgMetadata.numColors <= MAX_COLORS,
+      svg.meta.numColors <= MAX_COLORS,
       'number of colors is greater than max'
     );
-    require(svgMetadata.numColors > 0, 'cannot have 0 colors');
+    require(svg.meta.numColors > 0, 'cannot have 0 colors');
 
-    if (svgMetadata.hasPalette) {
+    if (svg.meta.hasPalette) {
       require(
-        data.length >= svgMetadata.paletteStart + svgMetadata.numColors * 8,
+        data.length >= svg.meta.paletteStart + svg.meta.numColors * 8,
         'palette data section is incorrect length'
       );
 
-      svgMetadata.palette = new bytes8[](svgMetadata.numColors);
+      svg.palette = new bytes8[](svg.meta.numColors);
       bytes8 d;
-      uint256 offset = 32 + svgMetadata.paletteStart;
+      uint256 offset = 32 + svg.meta.paletteStart;
 
-      for (uint256 i = 0; i < svgMetadata.numColors; i++) {
+      for (uint256 i = 0; i < svg.meta.numColors; i++) {
         assembly {
           d := mload(add(data, offset))
         }
-        svgMetadata.palette[i] = d;
+        svg.palette[i] = d;
         offset += 8;
       }
     } else {
-      require(
-        palette.length == svgMetadata.numColors,
-        'palette length mismatch'
-      );
-      svgMetadata.palette = palette;
+      require(palette.length == svg.meta.numColors, 'palette length mismatch');
+      svg.palette = palette;
     }
 
-    _setColorParams(svgMetadata);
+    _setColorParams(svg);
 
-    if (svgMetadata.hasBackground) {
+    if (svg.meta.hasBackground) {
       require(
-        svgMetadata.backgroundColorIndex < svgMetadata.numColors,
+        svg.meta.backgroundColorIndex < svg.meta.numColors,
         'background color index is greater than number of colors'
       );
     }
 
     // if there is 1 color and there is a background then we don't need to check the data length
-    if (svgMetadata.numColors > 1 || !svgMetadata.hasBackground) {
-      uint256 pixelDataLen = svgMetadata.totalPixels % 2 == 0
-        ? (svgMetadata.totalPixels / svgMetadata.ppb)
-        : (svgMetadata.totalPixels / svgMetadata.ppb) + 1;
+    if (svg.meta.numColors > 1 || !svg.meta.hasBackground) {
+      uint256 pixelDataLen = svg.meta.totalPixels % 2 == 0
+        ? (svg.meta.totalPixels / svg.meta.ppb)
+        : (svg.meta.totalPixels / svg.meta.ppb) + 1;
       require(
-        data.length == svgMetadata.dataStart + pixelDataLen,
+        data.length == svg.meta.dataStart + pixelDataLen,
         'data length is incorrect'
       );
     }
   }
 
-  function _setupBuffers(SVGMetadata memory meta, SVGBuffers memory buffers)
-    internal
-    view
-  {
+  function _setupBuffers(SVG memory svg) internal view {
     uint16 maxBufSize = (
-      (meta.height >= meta.width) ? meta.height / 2 : meta.width / 2
+      (svg.meta.height >= svg.meta.width)
+        ? svg.meta.height / 2
+        : svg.meta.width / 2
     ) + 4;
-    buffers.working.size = 0;
-    buffers.output.size = 0;
+    svg.buffers.working.size = 0;
+    svg.buffers.output.size = 0;
 
-    buffers.working.maxSize = maxBufSize;
-    buffers.output.maxSize = maxBufSize;
-    buffers.output.buffer = new bytes[](buffers.output.maxSize);
-    buffers.working.buffer = new bytes[](buffers.working.maxSize);
+    svg.buffers.working.maxSize = maxBufSize;
+    svg.buffers.output.maxSize = maxBufSize;
+    svg.buffers.output.buffer = new bytes[](svg.buffers.output.maxSize);
+    svg.buffers.working.buffer = new bytes[](svg.buffers.working.maxSize);
 
-    if (meta.hasBackground) {
-      buffers.output.buffer[0] = abi.encodePacked(
+    if (svg.meta.hasBackground) {
+      svg.buffers.output.buffer[0] = abi.encodePacked(
         '<svg xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" version="1.1" viewBox="0 0 ',
-        _numbers.getNum(meta.width * 16),
+        _numbers.getNum(svg.meta.width * 16),
         ' ',
-        _numbers.getNum(meta.height * 16),
+        _numbers.getNum(svg.meta.height * 16),
         '"><g transform="scale(16 16)"><rect fill="#',
-        meta.palette[meta.backgroundColorIndex],
+        svg.palette[svg.meta.backgroundColorIndex],
         '" height="',
-        meta.lookup[meta.height],
+        svg.numberLUT[svg.meta.height],
         '" width="',
-        meta.lookup[meta.width],
+        svg.numberLUT[svg.meta.width],
         '"/>'
       );
     } else {
-      buffers.output.buffer[0] = abi.encodePacked(
+      svg.buffers.output.buffer[0] = abi.encodePacked(
         '<svg xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" version="1.1" viewBox="0 0 ',
-        _numbers.getNum(meta.width * 16),
+        _numbers.getNum(svg.meta.width * 16),
         ' ',
-        _numbers.getNum(meta.height * 16),
+        _numbers.getNum(svg.meta.height * 16),
         '"><g transform="scale(16 16)">'
       );
     }
@@ -710,30 +674,30 @@ contract XQST_RENDER {
   function decodeHeader(bytes calldata data, bytes8[] memory palette)
     public
     pure
-    returns (SVGMetadata memory)
+    returns (SVG memory)
   {
-    SVGMetadata memory svgMetadata;
-    _decodeHeader(data, svgMetadata, palette);
-    return svgMetadata;
+    SVG memory svg;
+    _decodeHeader(data, palette, svg);
+    return svg;
   }
 
-  function _setColorParams(SVGMetadata memory svgData) internal pure {
-    if (svgData.numColors > 16) {
+  function _setColorParams(SVG memory svg) internal pure {
+    if (svg.meta.numColors > 16) {
       // Use 256 Colors
-      svgData.bpp = 8;
-      svgData.ppb = 1;
-    } else if (svgData.numColors > 4) {
+      svg.meta.bpp = 8;
+      svg.meta.ppb = 1;
+    } else if (svg.meta.numColors > 4) {
       // Use 16 Colors
-      svgData.bpp = 4;
-      svgData.ppb = 2;
-    } else if (svgData.numColors > 2) {
+      svg.meta.bpp = 4;
+      svg.meta.ppb = 2;
+    } else if (svg.meta.numColors > 2) {
       // Use 4 Colors
-      svgData.bpp = 2;
-      svgData.ppb = 4;
+      svg.meta.bpp = 2;
+      svg.meta.ppb = 4;
     } else {
       // Use 2 Color
-      svgData.bpp = 1;
-      svgData.ppb = 8;
+      svg.meta.bpp = 1;
+      svg.meta.ppb = 8;
     }
   }
 }
