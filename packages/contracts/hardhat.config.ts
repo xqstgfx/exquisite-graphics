@@ -36,5 +36,8 @@ export default {
   },
   etherscan: {
     apiKey: 'KZ9KA8WH63FHJYFVYCWN7DH7KGBKF3NQ6I'
+  },
+  mocha: {
+    timeout: 30000
   }
 };

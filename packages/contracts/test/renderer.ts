@@ -1,11 +1,12 @@
-import { expect } from 'chai';
+import { expect, util } from 'chai';
 import { ethers, waffle } from 'hardhat';
 import fs from 'fs';
 
 import chroma from 'chroma-js';
 
-import { XQSTRENDER, Numbers } from '../typechain';
-import { arrayify } from '@ethersproject/bytes';
+import { XQSTRENDER } from '../typechain';
+import { arrayify, hexlify } from '@ethersproject/bytes';
+import { utils } from 'ethers';
 
 const PRIME_NUMBERS = [
   2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53
@@ -216,6 +217,8 @@ async function renderCubeHelix(
   numRows: number,
   numCols: number,
   numColors: number,
+  random: boolean = false,
+  iteration: number = 0,
   backgroundEnabled: number = 1,
   backgroundColorIndex: number = 0,
   paletteInHeader: number = 1
@@ -225,16 +228,37 @@ async function renderCubeHelix(
     backgroundColorIndex,
     paletteInHeader
   };
-  const data = `0x${generatePixelHeader(
-    numCols,
-    numRows,
-    numColors,
-    1,
-    options
-  )}${generatePalette(
-    CUBEHELIX_SCALE.colors(numColors),
-    paletteInHeader
-  )}${generatePixels(numRows, numCols, numColors)}`;
+
+  let data;
+  if (!random) {
+    data = `0x${generatePixelHeader(
+      numCols,
+      numRows,
+      numColors,
+      1,
+      options
+    )}${generatePalette(
+      CUBEHELIX_SCALE.colors(numColors),
+      paletteInHeader
+    )}${generatePixels(numRows, numCols, numColors)}`;
+  } else {
+    const numRandomBytes = (numCols * numRows) / getPixelInfo(numColors).ppb;
+    const randBytes = hexlify(utils.randomBytes(numRandomBytes)).replace(
+      '0x',
+      ''
+    );
+
+    data = `0x${generatePixelHeader(
+      numCols,
+      numRows,
+      numColors,
+      1,
+      options
+    )}${generatePalette(
+      CUBEHELIX_SCALE.colors(numColors),
+      paletteInHeader
+    )}${randBytes}`;
+  }
 
   const result = await renderer.renderSVG(
     data,
@@ -251,7 +275,7 @@ async function renderCubeHelix(
   saveSVG(
     result,
     suiteName,
-    `NEW_HELIX_${numColors}COLORS_${numCols}x${numRows}`
+    `NEW_HELIX_${numColors}COLORS_${numCols}x${numRows}_${iteration}`
   );
 }
 
@@ -318,22 +342,14 @@ function generatePixels(nRows: number, nCols: number, nColors: number) {
 
 describe('Renderer', () => {
   let renderer: XQSTRENDER;
-  let numbers: Numbers;
 
   before(async () => {
     // 1
     const signers = await ethers.getSigners();
 
     // 2
-    const numbersFactory = await ethers.getContractFactory('Numbers');
-    numbers = (await numbersFactory.deploy()) as Numbers;
-
-    // 3
     const rendererFactory = await ethers.getContractFactory('XQST_RENDER');
-    renderer = (await rendererFactory.deploy(
-      // numbers.address
-      numbers.address
-    )) as XQSTRENDER;
+    renderer = (await rendererFactory.deploy()) as XQSTRENDER;
   });
 
   beforeEach(async () => {});
@@ -379,24 +395,61 @@ describe('Renderer', () => {
   //   }
   // }
 
-  /* ~~~~~~~~~~~~~~ TEST 1 -> 256 COLORS: 56x56 ~~~~~~~~~~~~~~ */
-  for (let v = 256; v <= 256; v += 1) {
-    describe(`56x56 - ${v} Colors`, function () {
-      it(`Should render 56x56 with ${v} Colors`, async function () {
-        const WIDTH = 56;
-        const HEIGHT = 56;
-        const NUM_COLORS = v;
+  /* ~~~~~~~~~~~~~~ TEST SCOTT ~~~~~~~~~~~~~~ */
+  describe(`24x16 - 2 Colors`, function () {
+    it(`Should render 24x16 with 2 Colors`, async function () {
+      const WIDTH = 24;
+      const HEIGHT = 16;
+      const NUM_COLORS = 2;
+
+      const done = await renderCubeHelix(
+        renderer,
+        'SCOTT',
+        HEIGHT,
+        WIDTH,
+        NUM_COLORS
+      );
+    });
+  });
+
+  for (let i = 1; i < 100; i++) {
+    describe(`24x16 - 2 Colors`, function () {
+      it(`Should render 24x16 with 2 Colors`, async function () {
+        const WIDTH = 24;
+        const HEIGHT = 16;
+        const NUM_COLORS = 2;
 
         const done = await renderCubeHelix(
           renderer,
-          'SWEEP_ALL_COLORS_32x32',
+          'SCOTT',
           HEIGHT,
           WIDTH,
-          NUM_COLORS
+          NUM_COLORS,
+          true,
+          i
         );
       });
     });
   }
+
+  /* ~~~~~~~~~~~~~~ TEST 1 -> 256 COLORS: 56x56 ~~~~~~~~~~~~~~ */
+  // for (let v = 256; v <= 256; v += 1) {
+  //   describe(`56x56 - ${v} Colors`, function () {
+  //     it(`Should render 56x56 with ${v} Colors`, async function () {
+  //       const WIDTH = 56;
+  //       const HEIGHT = 56;
+  //       const NUM_COLORS = v;
+
+  //       const done = await renderCubeHelix(
+  //         renderer,
+  //         'SWEEP_ALL_COLORS_16x16',
+  //         HEIGHT,
+  //         WIDTH,
+  //         NUM_COLORS
+  //       );
+  //     });
+  //   });
+  // }
 
   // /* ~~~~~~~~~~~~~~ TEST 2 COLORS: 16x16 -> 56x56 ~~~~~~~~~~~~~~ */
   // for (let v = 48; v <= 56; v += 4) {

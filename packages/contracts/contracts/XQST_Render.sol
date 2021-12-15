@@ -2,15 +2,12 @@
 pragma solidity ^0.8.9;
 
 import 'hardhat/console.sol';
-import './interfaces/INumbers.sol';
+import './interfaces/IXQST_Render.sol';
 
 contract XQST_RENDER {
   uint16 constant MAX_COLORS = 256;
   uint8 constant MAX_ROWS = 64;
   uint8 constant MAX_COLS = 64;
-  uint8 constant MAX_MULTIPLIER = 16;
-
-  INumbers private _numbers;
 
   struct Pixel {
     bytes x;
@@ -38,28 +35,10 @@ contract XQST_RENDER {
     bytes[] buffer;
   }
 
-  struct SVGHeader {
-    uint8 version;
-    uint16 width;
-    uint16 height;
-    uint16 numColors;
-    uint8 backgroundColorIndex;
-    uint8 reserved; // Reserved for future use
-    bool hasPalette;
-    bool hasBackground;
-  }
-
-  struct SVG {
-    SVGHeader header;
-    uint8[] data;
-    bytes8[] palette;
-    SVGBuffers buffers;
-    SVGCursor cursor;
-    // Int to Bytes
-    bytes[] numberLUT;
-  }
-
   struct SVGMetadata {
+    // TODO
+    // XQSTBitmapHeader header;
+
     /* HEADER START */
     uint8 version;
     uint16 width;
@@ -82,10 +61,6 @@ contract XQST_RENDER {
     uint8[] colorIndexLookup;
     bytes8[] palette;
     bytes[] lookup; // number lookup table
-  }
-
-  constructor(address numbersAddr_) {
-    _numbers = INumbers(numbersAddr_);
   }
 
   function pack12(bytes[] memory data, uint256 startIndex)
@@ -163,7 +138,6 @@ contract XQST_RENDER {
     return bytes.concat(data[startIndex], data[startIndex + 1]);
   }
 
-  // TODO should this just take SVGBuffer? And then rename SVGBuffer to Buffer?
   function packN(bytes[] memory data, uint256 length)
     internal
     pure
@@ -360,6 +334,23 @@ contract XQST_RENDER {
     delete (pos.numColors);
   }
 
+  function saveWorkingBuffer(SVGBuffers memory buffers, SVGCursor memory pos)
+    internal
+    pure
+  {
+    buffers.working.buffer[buffers.working.size] = pos.data;
+    buffers.working.size++;
+
+    if (buffers.working.size == buffers.working.maxSize) {
+      buffers.output.buffer[buffers.output.size] = packN(
+        buffers.working.buffer,
+        buffers.working.size
+      );
+      buffers.output.size++;
+      buffers.working.size = 0;
+    }
+  }
+
   function getRectSVG(SVGMetadata memory svgData, SVGBuffers memory buffers)
     public
     pure
@@ -386,6 +377,7 @@ contract XQST_RENDER {
         else break;
       }
 
+      // TODO need to make this a function
       if (c > 1) {
         pos.rlePixels[pos.numRLEPixels].width = svgData.lookup[c];
         pos.rlePixels[pos.numRLEPixels].colorIndex = colorIndex;
@@ -405,36 +397,15 @@ contract XQST_RENDER {
       }
 
       pixelNum += c; // doing this costs significant gas? why?
+
       if (pos.numColors == 8 || pixelNum == svgData.totalPixels) {
         pixelN(pos, svgData);
-
-        buffers.working.buffer[buffers.working.size] = pos.data;
-        buffers.working.size++;
-
-        if (buffers.working.size == buffers.working.maxSize) {
-          buffers.output.buffer[buffers.output.size] = packN(
-            buffers.working.buffer,
-            buffers.working.size
-          );
-          buffers.output.size++;
-          buffers.working.size = 0;
-        }
+        saveWorkingBuffer(buffers, pos);
       }
 
       if (pos.numRLEPixels == 8 || pixelNum == svgData.totalPixels) {
         rlePixelN(pos, svgData);
-
-        buffers.working.buffer[buffers.working.size] = pos.data;
-        buffers.working.size++;
-
-        if (buffers.working.size == buffers.working.maxSize) {
-          buffers.output.buffer[buffers.output.size] = packN(
-            buffers.working.buffer,
-            buffers.working.size
-          );
-          buffers.output.size++;
-          buffers.working.size = 0;
-        }
+        saveWorkingBuffer(buffers, pos);
       }
     }
 
@@ -496,6 +467,7 @@ contract XQST_RENDER {
     returns (string memory)
   {
     require(data.length >= 8, 'missing header');
+    console.logBytes(data);
 
     SVGMetadata memory svgData;
     SVGBuffers memory buffers;
@@ -544,7 +516,7 @@ contract XQST_RENDER {
 
     svgData.lookup = new bytes[](max);
     for (uint256 i = 0; i < max; i++) {
-      svgData.lookup[i] = _numbers.getNum8(uint8(i));
+      svgData.lookup[i] = toBytes(i);
     }
   }
 
@@ -554,7 +526,7 @@ contract XQST_RENDER {
   {
     uint256 startGas = gasleft();
     uint16 bufSize = 16;
-    bytes[] memory symbolBuffer = new bytes[](bufSize); // TODO tune buffer size
+    bytes[] memory symbolBuffer = new bytes[](bufSize);
     uint256 symbolBufferSize = 0;
 
     for (uint256 i = 0; i < svgData.palette.length; i++) {
@@ -685,9 +657,9 @@ contract XQST_RENDER {
     if (meta.hasBackground) {
       buffers.output.buffer[0] = abi.encodePacked(
         '<svg xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" version="1.1" viewBox="0 0 ',
-        _numbers.getNum(meta.width * 16),
+        toBytes(meta.width * 16),
         ' ',
-        _numbers.getNum(meta.height * 16),
+        toBytes(meta.height * 16),
         '"><g transform="scale(16 16)"><rect fill="#',
         meta.palette[meta.backgroundColorIndex],
         '" height="',
@@ -699,9 +671,9 @@ contract XQST_RENDER {
     } else {
       buffers.output.buffer[0] = abi.encodePacked(
         '<svg xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" version="1.1" viewBox="0 0 ',
-        _numbers.getNum(meta.width * 16),
+        toBytes(meta.width * 16),
         ' ',
-        _numbers.getNum(meta.height * 16),
+        toBytes(meta.height * 16),
         '"><g transform="scale(16 16)">'
       );
     }
@@ -735,5 +707,27 @@ contract XQST_RENDER {
       svgData.bpp = 1;
       svgData.ppb = 8;
     }
+  }
+
+  function toBytes(uint256 value) internal pure returns (bytes memory) {
+    // Inspired by OraclizeAPI's implementation - MIT license
+    // https://github.com/oraclize/ethereum-api/blob/b42146b063c7d6ee1358846c198246239e9360e8/oraclizeAPI_0.4.25.sol
+
+    if (value == 0) {
+      return '0';
+    }
+    uint256 temp = value;
+    uint256 digits;
+    while (temp != 0) {
+      digits++;
+      temp /= 10;
+    }
+    bytes memory buffer = new bytes(digits);
+    while (value != 0) {
+      digits -= 1;
+      buffer[digits] = bytes1(uint8(48 + uint256(value % 10)));
+      value /= 10;
+    }
+    return buffer;
   }
 }
