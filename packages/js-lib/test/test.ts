@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { getBinarySVG_Array } from '../src/api';
 import { PixelBuffer, PixelBufferOptions } from '../src/ll_api';
+import { pngToData } from '../src/utils/png';
 
 const options: PixelBufferOptions = {
   version: 1,
@@ -123,5 +124,12 @@ describe('5x5 - 2 Colors', () => {
 
     const data = getBinarySVG_Array(pixels);
     console.log('data', data);
+  });
+});
+
+describe('test png to data', async () => {
+  it('returns the data properly', async () => {
+    const data = await pngToData('test/test_16_16_256.png');
+    console.log(data);
   });
 });
