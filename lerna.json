@@ -1,7 +1,10 @@
 {
   "npmClient": "yarn",
-  "packages": ["packages/js", "packages/contracts"],
-  "version": "0.0.2",
+  "packages": [
+    "packages/js",
+    "packages/contracts"
+  ],
+  "version": "0.0.3",
   "publishConfig": {
     "access": "public"
   }
