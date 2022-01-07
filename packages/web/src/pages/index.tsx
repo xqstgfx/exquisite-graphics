@@ -18,7 +18,18 @@ const RAINBOW_SCALE = chroma
   .mode('hsl');
 const CUBEHELIX_SCALE = chroma.cubehelix().gamma(0.6).scale();
 const GREYSCALE = chroma.scale(['white', 'black']);
-const MATRIX = chroma.scale(['green', 'black']);
+const MATRIX = chroma.scale([
+  'green',
+  'black',
+  'green',
+  'black',
+  'green',
+  'black',
+  'green',
+  'black',
+  'green',
+  'black'
+]);
 
 const getScale = (color: number) => {
   switch (color) {
