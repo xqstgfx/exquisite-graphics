@@ -134,7 +134,10 @@ export class PixelBuffer {
   }
 
   getPixelBuffer(): string {
-    return `0x${this.getHeader()}${this.getPalette()}${this.getData()}`;
+    const header = this.headerBuffer.toString('hex');
+    const palette = this.paletteBuffer.toString('hex');
+    const data = this.dataBuffer.toString('hex');
+    return `0x${header}${palette}${data}`;
   }
 
   getHeader(): string {

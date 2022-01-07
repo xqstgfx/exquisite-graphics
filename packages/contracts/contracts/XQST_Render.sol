@@ -197,7 +197,7 @@ contract XQST_RENDER {
 
   function _decodeHeader(bytes memory data, SVGMetadata memory svgMetadata)
     internal
-    pure
+    view
   {
     uint64 header;
 
@@ -265,11 +265,14 @@ contract XQST_RENDER {
     // if there is 1 color and there is a background then we don't need to check the data length
     // TODO revisit this for 0 colors.
     if (svgMetadata.numColors > 1 || !svgMetadata.hasBackground) {
-      uint256 pixelDataLen = svgMetadata.totalPixels % 2 == 0
+      uint256 pixelDataLen = (svgMetadata.totalPixels % 2 == 0) ||
+        svgMetadata.ppb == 1
         ? (svgMetadata.totalPixels / svgMetadata.ppb)
         : (svgMetadata.totalPixels / svgMetadata.ppb) + 1;
+      console.log(svgMetadata.totalPixels, data.length);
+      console.log(pixelDataLen, svgMetadata.dataStart);
       require(
-        data.length == svgMetadata.dataStart + pixelDataLen,
+        data.length >= svgMetadata.dataStart + pixelDataLen,
         'data length is incorrect'
       );
     }
@@ -317,7 +320,7 @@ contract XQST_RENDER {
 
   function decodeHeader(bytes calldata data)
     public
-    pure
+    view
     returns (SVGMetadata memory)
   {
     SVGMetadata memory svgMetadata;
