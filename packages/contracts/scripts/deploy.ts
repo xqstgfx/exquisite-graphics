@@ -2,11 +2,8 @@ import fs from 'fs-extra';
 import { JsonRpcProvider } from '@ethersproject/providers';
 import { Wallet } from '@ethersproject/wallet';
 import { XQSTRENDER__factory } from '../typechain';
-import util from 'util';
 import hre from 'hardhat';
 import 'hardhat-change-network';
-
-const exec = util.promisify(require('child_process').exec);
 
 async function start() {
   const args = require('minimist')(process.argv.slice(2));
