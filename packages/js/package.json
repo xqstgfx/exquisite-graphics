@@ -1,6 +1,6 @@
 {
   "name": "@exquisite-graphics/js",
-  "version": "0.0.2",
+  "version": "0.0.1",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "license": "MIT",
@@ -22,5 +22,9 @@
   "dependencies": {
     "get-pixels": "^3.3.3",
     "pngjs": "^6.0.0"
-  }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "gitHead": "1ce1f84ec89f6cbc1ab4ae3b0af26c1a678de310"
 }
