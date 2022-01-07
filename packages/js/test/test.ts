@@ -1,19 +1,20 @@
 import { expect } from 'chai';
 import { getBinarySVG_Array } from '../src/api';
-import { PixelBuffer, PixelBufferOptions } from '../src/ll_api';
+import { PixelBuffer, ExquisiteBitmapHeader } from '../src/ll_api';
 import { pngToData } from '../src/utils/png';
+import { renderSVG } from '../src/svg';
 
-const options: PixelBufferOptions = {
+const header: ExquisiteBitmapHeader = {
   version: 1,
   width: 3,
   height: 5,
   numColors: 4,
   paletteIncluded: true,
-  palette: ['#ffffff', '#000', '#ff00ff', '#ff0000'],
   backgroundIncluded: false,
   backgroundIndex: 0
 };
-const buffer = new PixelBuffer(options);
+const palette = ['#ffffff', '#000', '#ff00ff', '#ff0000'];
+const buffer = new PixelBuffer(header, palette);
 
 describe('Buffer Init', () => {
   it('Buffer Header Proper', () => {
@@ -83,7 +84,7 @@ describe('Set Color', () => {
   });
 
   it('log data', () => {
-    console.log(buffer.getData());
+    // console.log(buffer.getData());
   });
 });
 
@@ -95,7 +96,6 @@ describe('4x4 - 2 Colors', () => {
         pixels.push({ x, y, color: x % 2 == 0 ? '#000' : '#fff' });
       }
     }
-    console.log(pixels);
 
     const data = getBinarySVG_Array(pixels);
 
@@ -107,8 +107,6 @@ describe('4x4 - 2 Colors', () => {
     expect(buffer.getHeader()).to.eq('0x0104040002000003');
     expect(buffer.getPalette()).to.eq('0x30303030303066666666666666666666');
     expect(buffer.getData()).to.eq('0x5555');
-
-    console.log('data', data);
   });
 });
 
@@ -117,19 +115,29 @@ describe('5x5 - 2 Colors', () => {
     let pixels: { x: number; y: number; color: string }[] = [];
     for (let y = 0; y < 5; y++) {
       for (let x = 0; x < 5; x++) {
-        pixels.push({ x, y, color: x % 2 == 1 ? '#000' : '#fff' });
+        pixels.push({ x, y, color: x % 2 == 0 ? '#000' : '#fff' });
       }
     }
-    console.log(pixels);
 
     const data = getBinarySVG_Array(pixels);
-    console.log('data', data);
+    if (data == undefined) expect(0).to.eq(1);
+    const buffer = data as PixelBuffer;
+
+    expect(buffer.getHeader()).to.eq('0x0105050002000003');
+    expect(buffer.getPalette()).to.eq('0x30303030303066666666666666666666');
+    expect(buffer.getData()).to.eq('0x5294a500');
   });
 });
 
 describe('test png to data', async () => {
   it('returns the data properly', async () => {
-    const data = await pngToData('test/test_16_16_256.png');
-    console.log(data);
+    const data = await pngToData('test/test.png');
+  });
+});
+
+describe('test png to data to svg', async () => {
+  it('returns the svg properly', async () => {
+    const data = await pngToData('test/test.png');
+    if (data) renderSVG(data);
   });
 });

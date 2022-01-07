@@ -39,5 +39,11 @@ export default {
   },
   mocha: {
     timeout: 30000
+  },
+  gasReporter: {
+    coinmarketcap: process.env.COINMARKETCAP_API_KEY,
+    currency: 'USD',
+    gasPrice: 150,
+    token: 'MATIC'
   }
 };

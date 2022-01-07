@@ -150,7 +150,7 @@ contract XQST_RENDER {
   /* RECT RENDERER */
   function renderSVG(bytes memory data) public view returns (string memory) {
     require(data.length >= 8, 'missing header');
-    console.logBytes(data);
+    // console.logBytes(data);
 
     SVGMetadata memory svgData;
     SVGBuffers memory buffers;
@@ -232,7 +232,7 @@ contract XQST_RENDER {
       svgMetadata.numColors <= MAX_COLORS,
       'number of colors is greater than max'
     );
-    // require(svgMetadata.numColors > 0, 'cannot have 0 colors');
+    require(svgMetadata.numColors > 0, 'cannot have 0 colors');
 
     if (svgMetadata.numColors > 0) {
       require(
