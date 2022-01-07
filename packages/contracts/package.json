@@ -1,6 +1,6 @@
 {
   "name": "@exquisite-graphics/contracts",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "scripts": {
     "build": "yarn build:contracts && yarn build:package",
     "prepublishOnly": "yarn build",
