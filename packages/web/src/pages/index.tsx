@@ -69,7 +69,12 @@ function circleGenerator(
 
   const getValue = (x: number, y: number) => {
     const radius = Math.max(nCols / 2, nRows / 2);
-    const distance = distanceFrom(x, y, nCols / 2, nRows / 2);
+    const distance = distanceFrom(
+      x,
+      y,
+      Math.floor(nCols / 2),
+      Math.floor(nRows / 2)
+    );
 
     return distance / (radius * Math.sqrt(Math.E));
   };
