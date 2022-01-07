@@ -1,13 +1,13 @@
 {
   "name": "@exquisite-graphics/web",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next"
   },
   "dependencies": {
-    "@exquisite-graphics/js": "*",
+    "@exquisite-graphics/js": "^0.0.2",
     "@gimmixorg/use-wallet": "^0.0.31",
     "chroma-js": "^2.1.2",
     "next": "^11.0.0",
