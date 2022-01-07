@@ -107,7 +107,6 @@ export const getBinarySVG_Array = (pixels: Pixel[]) => {
 
   // validate if contigious
   pixelNums = pixelNums.sort((a, b) => a - b);
-  console.log(pixelNums);
   for (let i = 0; i < pixelNums.length - 1; i++) {
     if (i == 0 && pixelNums[i] != 0)
       return Error('The smallest pixel is not 0');

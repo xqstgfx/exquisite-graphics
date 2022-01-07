@@ -1,17 +1,19 @@
 {
   "name": "@exquisite-graphics/web",
-  "version": "0.0.2",
+  "version": "0.0.1",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next"
   },
   "dependencies": {
-    "@exquisite-graphics/js": "^0.0.2",
+    "@exquisite-graphics/js": "*",
+    "@gimmixorg/use-wallet": "^0.0.31",
     "chroma-js": "^2.1.2",
     "next": "^11.0.0",
     "react": "^17.0.1",
-    "react-dom": "^17.0.1"
+    "react-dom": "^17.0.1",
+    "react-ens-name": "^0.2.5"
   },
   "devDependencies": {
     "@types/chroma-js": "^2.1.3",

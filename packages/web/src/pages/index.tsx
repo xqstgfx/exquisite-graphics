@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import chroma from 'chroma-js';
+import { useWallet } from '@gimmixorg/use-wallet';
+import { ENSName } from 'react-ens-name';
 
 import { getSVGPixels } from '@exquisite-graphics/js';
 
@@ -69,7 +71,7 @@ function circleGenerator(
     const radius = Math.max(nCols / 2, nRows / 2);
     const distance = distanceFrom(x, y, nCols / 2, nRows / 2);
 
-    return distance / (radius * (Math.PI / 2));
+    return distance / (radius * Math.sqrt(Math.E));
   };
 
   const colorScale = getScale(color).scale;
@@ -92,6 +94,8 @@ function circleGenerator(
 }
 
 const IndexPage = () => {
+  const { connect, account } = useWallet();
+
   const [width, setWidth] = useState(16);
   const [height, setHeight] = useState(16);
   const [numColors, setNumColors] = useState(256);
@@ -100,6 +104,13 @@ const IndexPage = () => {
 
   return (
     <div className="index">
+      <div>
+        {account ? (
+          <ENSName address={account} />
+        ) : (
+          <button onClick={() => connect()}>Connect Wallet</button>
+        )}
+      </div>
       <div>
         <h3>Width</h3>
         <div>
