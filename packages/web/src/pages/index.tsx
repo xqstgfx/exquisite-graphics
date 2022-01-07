@@ -183,7 +183,7 @@ const IndexPage = () => {
       </div>
 
       <div
-        style={{ width: 512, height: 512 }}
+        style={{ width: 512, height: 512, display: 'flex' }}
         dangerouslySetInnerHTML={{
           __html: getSVGPixels(
             generator == 1
