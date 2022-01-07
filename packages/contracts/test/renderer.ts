@@ -7,6 +7,7 @@ import chroma from 'chroma-js';
 import { XQSTRENDER } from '../typechain';
 import { arrayify, hexlify } from '@ethersproject/bytes';
 import { utils } from 'ethers';
+import sharp from 'sharp';
 
 const PRIME_NUMBERS = [
   2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53
@@ -18,7 +19,7 @@ const ONE = [1]; // 1 one
 const BASIC_COLOR_DEPTHS = [1, 2, 4, 16, 27, 56, 157, 256]; // covers (one, 1bpp, 2bpp, 4bpp, odd, even, prime, 8bpp)
 
 const RAINBOW_SCALE = chroma
-  .scale(['#f00', '#0f0', '#00f', '#f00'])
+  .scale(['#f00', '#0f0', '#00f', '#fe0000'])
   .mode('hsl');
 const CUBEHELIX_SCALE = chroma.cubehelix().gamma(0.6).scale();
 
@@ -26,8 +27,7 @@ function getSVG(
   colorScale: chroma.Scale<chroma.Color>,
   nRows: number,
   nCols: number,
-  nColors: number,
-  rleEnabled: boolean = false
+  nColors: number
 ) {
   let expectedSVG = `<svg xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" version="1.1" viewBox="0 0 ${
     nCols * 16
@@ -72,7 +72,7 @@ function generatePixelHeader(
   options?: PixelOptions
 ) {
   if (options) {
-    console.log('options', options);
+    // console.log('options', options);
   }
   let header = '';
   let lastByte = 0;
@@ -102,7 +102,7 @@ function generatePixelHeader(
   header += '000'; // reserved
   header += lastByte;
 
-  console.log('0x' + header);
+  // console.log('0x' + header);
 
   return header;
 }
@@ -158,7 +158,7 @@ function getDataHexString(color: string) {
 function generatePalette(palette: string[], genPalette: number) {
   if (genPalette == 0) return '';
 
-  console.log(palette);
+  // console.log(palette);
 
   let s = '';
 
@@ -166,7 +166,7 @@ function generatePalette(palette: string[], genPalette: number) {
     s += getDataHexString(color);
   });
 
-  console.log(s);
+  // console.log(s);
 
   return s;
 }
@@ -303,6 +303,8 @@ async function renderRainbow(
     suiteName,
     `RAINBOW_${numColors}COLORS_${numCols}x${numRows}`
   );
+
+  return result;
 }
 
 function generatePixels8bpp(nRows: number, nCols: number, nColors: number) {
@@ -370,7 +372,7 @@ describe('Renderer', () => {
         // ['0x1111222233334444']
         // generatePixels(16, 16, 16)
       );
-      console.log(result);
+      // console.log(result);
     });
   });
 
@@ -437,8 +439,8 @@ describe('Renderer', () => {
   for (let v = 256; v <= 256; v += 1) {
     describe(`56x56 - ${v} Colors`, function () {
       it(`Should render 56x56 with ${v} Colors`, async function () {
-        const WIDTH = 64;
-        const HEIGHT = 64;
+        const WIDTH = 16;
+        const HEIGHT = 16;
         const NUM_COLORS = 256;
 
         const done = await renderRainbow(
@@ -448,6 +450,13 @@ describe('Renderer', () => {
           WIDTH,
           NUM_COLORS
         );
+
+        const png = await sharp(Buffer.from(done))
+          .resize(WIDTH, HEIGHT)
+          .png()
+          .toFile('test.png');
+        // .toBuffer();
+        // console.log(png);
       });
     });
   }

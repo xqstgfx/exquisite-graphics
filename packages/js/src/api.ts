@@ -1,23 +1,23 @@
 // TODO figure out how this thing should be organized
 
-import { PixelBuffer, PixelBufferOptions } from './ll_api';
+import { PixelBuffer, ExquisiteBitmapHeader } from './ll_api';
 
 type rgba = { r: number; g: number; b: number; a: number };
-export type PixelColor = string | rgba;
+export type PixelColor = string; // #000 -> #000000 -> 000000ff
 type Palette = PixelColor[];
-type Point = {
+export type Point = {
   x: number;
   y: number;
 };
 
-type Pixel = {
+export type Pixel = {
   x: number;
   y: number;
   color: PixelColor; // note this is not an index but the hex code of a color (#ffffff)
 };
 
-type PixelMap = Map<Point, PixelColor>;
-type Pixel2DArr = PixelColor[][];
+export type PixelMap = Map<Point, PixelColor>;
+export type Pixel2DArr = PixelColor[][];
 
 export function isRGBA(x: any): x is rgba {
   return typeof x === 'object';
@@ -28,8 +28,30 @@ export function isString(x: any): x is string {
 }
 
 // Functions to reconstruct SVG from binary pixel format
+export const getSVG = (data: string) => {
+  const buffer = new PixelBuffer();
+  buffer.from(data);
+  return getSVGPixelBuffer(buffer);
+};
 
-const getSVG = (data: string) => {};
+// TODO this should definitely be in the LLAPI
+export const getSVGPixelBuffer = (buffer: PixelBuffer) => {
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" version="1.1" viewBox="0 0 ${
+    buffer.header.width * 16
+  } ${buffer.header.height * 16}"><g transform="scale(16 16)">`;
+
+  buffer.toPixels().map((pixel) => {
+    svg += `<rect fill="${pixel.color}" x="${pixel.x}" y="${pixel.y}" height="1" width="1"/>`;
+  });
+
+  svg += '</g></svg>';
+  return svg;
+};
+
+export const getSVGPixels = (pixels: Pixel[]) => {
+  const buffer = getBinarySVG_Array(pixels) as PixelBuffer;
+  return getSVGPixelBuffer(buffer);
+};
 
 // const getPixels
 // in the same format you are using in your struct for js rendering
@@ -38,9 +60,7 @@ const getSVG = (data: string) => {};
 // Functions for most builders, working with simple pixel formats
 
 /* Function that takes an array of pixel objects and returns the binary format for the renderer */
-export const getBinarySVG_Array = (
-  pixels: { x: number; y: number; color: string }[]
-) => {
+export const getBinarySVG_Array = (pixels: Pixel[]) => {
   let width: number | null = null;
   let height: number | null = null;
   let pixelNums: number[] = [];
@@ -59,17 +79,18 @@ export const getBinarySVG_Array = (
     if (pixel.x > width) width = pixel.x;
     if (pixel.y > height) height = pixel.y;
 
-    const paletteColor = palette.get(pixel.color);
+    const pixelColor = pixel.color;
+    const paletteColor = palette.get(pixelColor); // TODO need to get pixel.color as rgba or string
     if (paletteColor == undefined) {
-      palette.set(pixel.color, {
-        color: pixel.color,
+      palette.set(pixelColor, {
+        color: pixelColor,
         index: numColors,
         count: 1
       });
       numColors++;
     } else {
-      palette.set(pixel.color, {
-        color: pixel.color,
+      palette.set(pixelColor, {
+        color: pixelColor,
         index: paletteColor.index,
         count: paletteColor.count + 1
       });
@@ -108,19 +129,18 @@ export const getBinarySVG_Array = (
     paletteArr[value.index] = value.color;
   });
 
-  const options: PixelBufferOptions = {
+  const header: ExquisiteBitmapHeader = {
     version: 1,
     width: width,
     height: height,
     numColors: palette.size,
     paletteIncluded: true,
-    palette: paletteArr,
     backgroundIncluded: true,
     backgroundIndex: bestColor.index
   };
 
   // initialize buffer
-  const buffer = new PixelBuffer(options);
+  const buffer = new PixelBuffer(header, paletteArr);
 
   pixels.map((pixel) => {
     const color = palette.get(pixel.color);
@@ -135,10 +155,10 @@ export const getBinarySVG_Array = (
 };
 
 /* Function that takes a map from {x, y} -> color and returns the binary format for the renderer */
-const getBinarySVG_Map = (pixels: Map<{ x: number; y: number }, string>) => {};
+const getBinarySVG_Map = (pixels: PixelMap) => {};
 
 /* Function that takes a 2d array of pixels. Something like where the outer array represents y
    and the inner array represents x and returns the binary format for the renderer */
-const getBinarySVG_2DArr = (pixels: string[][]) => {};
+const getBinarySVG_2DArr = (pixels: Pixel2DArr) => {};
 
 // TODO add support for the ndarray concept that scott pointed out
