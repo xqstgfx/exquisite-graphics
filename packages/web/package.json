@@ -1,13 +1,13 @@
 {
   "name": "@exquisite-graphics/web",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next"
   },
   "dependencies": {
-    "@exquisite-graphics/js": "0.0.1",
+    "@exquisite-graphics/js": "^0.0.2",
     "chroma-js": "^2.1.2",
     "next": "^11.0.0",
     "react": "^17.0.1",
