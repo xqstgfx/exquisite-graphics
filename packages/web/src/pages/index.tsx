@@ -154,13 +154,13 @@ const IndexPage = () => {
 
         <div className="art">
           <img
-            src={`data:image/svg+xml;base64,${btoa(
+            src={`data:image/svg+xml;base64,${Buffer.from(
               getSVGPixels(
                 generator == 1
                   ? rowGenerator(colorPalette, height, width, numColors)
                   : circleGenerator(colorPalette, height, width, numColors)
               )
-            )}`}
+            ).toString('base64')}`}
           ></img>
         </div>
 
