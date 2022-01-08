@@ -38,7 +38,9 @@ export const getSVG = (data: string) => {
 export const getSVGPixelBuffer = (buffer: PixelBuffer) => {
   let svg = `<svg xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" version="1.1" viewBox="0 0 ${
     buffer.header.width * 16
-  } ${buffer.header.height * 16}"><g transform="scale(16 16)">`;
+  } ${buffer.header.height * 16}" height="${
+    buffer.header.height * 16
+  }" width="${buffer.header.width * 16}"><g transform="scale(16 16)">`;
 
   buffer.toPixels().map((pixel) => {
     svg += `<rect fill="${pixel.color}" x="${pixel.x}" y="${pixel.y}" height="1" width="1"/>`;
