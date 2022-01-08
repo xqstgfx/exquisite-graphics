@@ -54,29 +54,32 @@ export class PixelBuffer {
     }
   }
 
-  from(data: string) {
-    // TODO: validate data (the passed in string)
-    // console.log(data);
+  // TODO
+  // static from(data: string): PixelBuffer {
+  //   // TODO: validate data (the passed in string)
+  //   // console.log(data);
 
-    // read header
-    const header = readHeader(data);
-    // console.log('header', header);
-    if (header == null) return;
-    this.header = header;
+  //   // read header
+  //   const header = readHeader(data);
+  //   // console.log('header', header);
+  //   if (header == null) return;
+  //   this.header = header;
 
-    this.palette = readPalette(data, header);
-    validateOptions(header);
-    this.pixelInfo = getPixelInfo(this.header.numColors);
-    this._setHeader();
-    this._setPalette();
-    this._initData();
+  //   this.palette = readPalette(data, header);
+  //   validateOptions(header);
+  //   this.pixelInfo = getPixelInfo(this.header.numColors);
+  //   this._setHeader();
+  //   this._setPalette();
+  //   this._initData();
 
-    // set data
-    this.dataBuffer = Buffer.from(
-      data.replace('0x', '').substring(16 + header.numColors * 16),
-      'hex'
-    );
-  }
+  //   // set data
+  //   this.dataBuffer = Buffer.from(
+  //     data.replace('0x', '').substring(16 + header.numColors * 16),
+  //     'hex'
+  //   );
+
+  //   return PixelBuffer;
+  // }
 
   _initData(): void {
     this.dataBuffer = Buffer.from(

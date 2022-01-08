@@ -12,11 +12,20 @@ const MainLayout = ({ children }: { children: ReactNode }) => {
         * {
           box-sizing: border-box;
         }
+        @font-face {
+          font-family: 'VCR_OSD';
+          src: url('/fonts/VCR_OSD_MONO.ttf');
+          font-style: medium;
+          font-weight: 500;
+        }
         html,
         body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+           {
+            /* font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
             Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-            'Segoe UI Symbol';
+            'Segoe UI Symbol'; */
+          }
+          font-family: 'VCR_OSD', monospace;
           margin: 0;
           padding: 0;
         }

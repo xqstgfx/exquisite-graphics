@@ -120,100 +120,146 @@ const IndexPage = () => {
 
   return (
     <div className="index">
-      <div>
-        {account ? (
-          <ENSName address={account} />
-        ) : (
-          <button onClick={() => connect()}>Connect Wallet</button>
-        )}
-      </div>
-      <div>
-        <h3>Width</h3>
-        <div>
-          <input
-            type="range"
-            min="1"
-            max="64"
-            value={width}
-            onChange={(e) => setWidth(parseInt(e.target.value))}
-            style={{ width: '256px' }}
-          />
-          {width}
-        </div>
-      </div>
-      <div>
-        <h3>Height</h3>
-        <div>
-          <input
-            type="range"
-            min="1"
-            max="64"
-            value={height}
-            onChange={(e) => setHeight(parseInt(e.target.value))}
-            style={{ width: '256px' }}
-          />
-          {height}
-        </div>
-      </div>
-      <div>
-        <h3>Num Colors</h3>
-        <div>
-          <input
-            type="range"
-            min="1"
-            max="256"
-            value={numColors}
-            onChange={(e) => setNumColors(parseInt(e.target.value))}
-            style={{ width: '256px' }}
-          />
-          {numColors}
-        </div>
-      </div>
-      <div>
-        <h3>Color Palette</h3>
-        <div>
-          <input
-            type="range"
-            min="1"
-            max="4"
-            value={colorPalette}
-            onChange={(e) => setColorPalette(parseInt(e.target.value))}
-            style={{ width: '256px' }}
-          />
-          {getScale(colorPalette).name}
-        </div>
-      </div>
-      <div>
-        <h3>Generator</h3>
-        <div>
-          <input
-            type="range"
-            min="1"
-            max="2"
-            value={generator}
-            onChange={(e) => setGenerator(parseInt(e.target.value))}
-            style={{ width: '256px' }}
-          />
-          {generator == 1 ? 'row' : 'circle'}
-        </div>
-      </div>
+      <h1 style={{ display: 'flex', justifyContent: 'center' }}>
+        Exquisite Graphics
+      </h1>
 
-      <div
-        style={{ width: 512, height: 512, display: 'flex' }}
-        dangerouslySetInnerHTML={{
-          __html: getSVGPixels(
-            generator == 1
-              ? rowGenerator(colorPalette, height, width, numColors)
-              : circleGenerator(colorPalette, height, width, numColors)
-          )
-        }}
-      ></div>
+      <div className="container">
+        <div style={{ gridArea: 'styling' }}>
+          <h3>Color Palette</h3>
+          <div>
+            <input
+              type="range"
+              min="1"
+              max="4"
+              value={colorPalette}
+              onChange={(e) => setColorPalette(parseInt(e.target.value))}
+              style={{ width: '256px' }}
+            />
+            {getScale(colorPalette).name}
+          </div>
+          <h3>Generator</h3>
+          <div>
+            <input
+              type="range"
+              min="1"
+              max="2"
+              value={generator}
+              onChange={(e) => setGenerator(parseInt(e.target.value))}
+              style={{ width: '256px' }}
+            />
+            {generator == 1 ? 'row' : 'circle'}
+          </div>
+        </div>
 
-      {/* Connect wallet */}
-      {/* Put an SVG on the page */}
-      {/* Sliders for SVG */}
+        <div className="art">
+          <img
+            src={`data:image/svg+xml;base64,${btoa(
+              getSVGPixels(
+                generator == 1
+                  ? rowGenerator(colorPalette, height, width, numColors)
+                  : circleGenerator(colorPalette, height, width, numColors)
+              )
+            )}`}
+          ></img>
+        </div>
+
+        <div style={{ gridArea: 'dimensions' }}>
+          <h3>Width</h3>
+          <div>
+            <input
+              type="range"
+              min="1"
+              max="64"
+              value={width}
+              onChange={(e) => setWidth(parseInt(e.target.value))}
+              style={{ width: '256px' }}
+            />
+            {width}
+          </div>
+          <h3>Height</h3>
+          <div>
+            <input
+              type="range"
+              min="1"
+              max="64"
+              value={height}
+              onChange={(e) => setHeight(parseInt(e.target.value))}
+              style={{ width: '256px' }}
+            />
+            {height}
+          </div>
+          <h3>Num Colors</h3>
+          <div>
+            <input
+              type="range"
+              min="1"
+              max="256"
+              value={numColors}
+              onChange={(e) => setNumColors(parseInt(e.target.value))}
+              style={{ width: '256px' }}
+            />
+            {numColors}
+          </div>
+        </div>
+      </div>
+      {account ? (
+        <ENSName address={account} />
+      ) : (
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center'
+          }}
+        >
+          <button
+            style={{
+              fontFamily: 'VCR_OSD',
+              backgroundColor: '#000',
+              color: '#fff'
+            }}
+            onClick={() => connect()}
+          >
+            Connect Wallet
+          </button>
+        </div>
+      )}
+
       <style jsx>{`
-        .index {
+        .art {
+          grid-area: art;
+          display: flex;
+        }
+
+        .art img {
+          width: 512px;
+          height: 512px;
+        }
+
+        .container {
+          display: grid;
+          gap: 0.5rem;
+          grid-auto-flow: column;
+          grid-template-rows: repeat(3, auto);
+          grid-template-areas: 'styling art dimensions';
+          padding: 4rem;
+        }
+
+        @media only screen and (max-width: 768px) {
+          .container {
+            padding: 0rem;
+            margin: 0rem;
+            display: grid;
+            grid-auto-flow: row;
+            gap: 0rem;
+            justify-content: center;
+            grid-template-areas: 'art' 'styling' 'dimensions';
+          }
+
+          .art img {
+            width: 85vw;
+            height: 85vw;
+          }
         }
       `}</style>
     </div>
