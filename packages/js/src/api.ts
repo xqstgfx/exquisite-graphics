@@ -142,6 +142,7 @@ export const getBinarySVG_Array = (pixels: Pixel[]) => {
 
   // initialize buffer
   const buffer = new PixelBuffer(header, paletteArr);
+  console.log(buffer);
 
   pixels.map((pixel) => {
     const color = palette.get(pixel.color);

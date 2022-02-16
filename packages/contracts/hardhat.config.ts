@@ -5,6 +5,7 @@ import { task } from 'hardhat/config';
 import '@nomiclabs/hardhat-etherscan';
 import 'hardhat-gas-reporter';
 import 'hardhat-change-network';
+import '@primitivefi/hardhat-marmite';
 
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
@@ -25,9 +26,16 @@ task('accounts', 'Prints the list of accounts', async (taskArgs, hre) => {
 export default {
   solidity: '0.8.9',
   networks: {
+    hardhat: {
+      blockGasLimit: 100_000_000
+    },
     mumbai: {
       chainId: 80001,
       url: require('dotenv').config({ path: '.env.80001' }).parsed.RPC_ENDPOINT
+    },
+    rinkeby: {
+      chainId: 4,
+      url: require('dotenv').config({ path: '.env.4' }).parsed.RPC_ENDPOINT
     }
     // matic: {
     //   chainId: 137,
@@ -35,7 +43,8 @@ export default {
     // }
   },
   etherscan: {
-    apiKey: 'KZ9KA8WH63FHJYFVYCWN7DH7KGBKF3NQ6I'
+    // apiKey: 'KZ9KA8WH63FHJYFVYCWN7DH7KGBKF3NQ6I'
+    apiKey: 'KCEM61R2DK9FZJRW1QX6RD51MWENTRGTG4'
   },
   mocha: {
     timeout: 30000

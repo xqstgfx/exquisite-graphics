@@ -12,7 +12,7 @@
     "deploy-local": "ts-node scripts/deploy.ts --chainId 1337 && cp -R addresses dist",
     "deploy-test": "ts-node scripts/test.ts",
     "deploy-mumbai": "ts-node scripts/deploy.ts --chainId 80001 && cp -R addresses dist",
-    "deploy-mumbai-dev": "ts-node scripts/deploy.ts --chainId 80001 --dev && cp -R addresses dist",
+    "deploy-rink": "ts-node scripts/deploy.ts --chainId 4 && cp -R addresses dist",
     "deploy": "ts-node scripts/deploy.ts --chainId 137 && cp -R addresses dist"
   },
   "devDependencies": {
@@ -43,7 +43,8 @@
     "typescript": "^4.3.5"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^4.3.1"
+    "@openzeppelin/contracts": "^4.3.1",
+    "@primitivefi/hardhat-marmite": "^0.0.4"
   },
   "publishConfig": {
     "access": "public"

@@ -3,7 +3,13 @@ import chroma from 'chroma-js';
 import { useWallet } from '@gimmixorg/use-wallet';
 import { ENSName } from 'react-ens-name';
 
-import { getSVGPixels } from '@exquisite-graphics/js';
+import {
+  getSVGPixels,
+  getBinarySVG_Array,
+  PixelBuffer
+} from '@exquisite-graphics/js';
+
+// TODO im feeling lucky frontend thing - "masterfully exquisite"
 
 const RAINBOW_SCALE = chroma
   .scale([
@@ -47,6 +53,8 @@ const getScale = (color: number) => {
   }
 };
 
+// todo add a corrupted generator
+
 function rowGenerator(
   color: number,
   nRows: number,
@@ -64,6 +72,9 @@ function rowGenerator(
       pixels.push({ x: col, y: row, color: palette[colorIndex] });
     }
   }
+
+  const pixBuf = getBinarySVG_Array(pixels) as PixelBuffer;
+  console.log(pixBuf.getPixelBuffer());
 
   return pixels;
 }
@@ -87,7 +98,7 @@ function circleGenerator(
       Math.floor(nRows / 2)
     );
 
-    return distance / (radius * Math.sqrt(Math.E));
+    return (distance * Math.log(distance)) / (radius * 2 * Math.PI);
   };
 
   const colorScale = getScale(color).scale;
@@ -106,7 +117,52 @@ function circleGenerator(
     }
   }
 
+  const pixBuf = getBinarySVG_Array(pixels) as PixelBuffer;
+  console.log(pixBuf.getPixelBuffer());
+
   return pixels;
+}
+
+function corruptedCircleGenerator(
+  color: number,
+  nRows: number,
+  nCols: number,
+  nColors: number
+) {
+  const colorScale = getScale(color).scale;
+  const palette = colorScale.colors(nColors);
+  const colorToIndex = new Map<string, number>();
+
+  palette.map((color, index) => colorToIndex.set(color, index));
+
+  const pixels = circleGenerator(color, nRows, nCols, nColors);
+  let newPixels = pixels.map((p) => {
+    const random = Math.random();
+    const currColorIndex = colorToIndex.get(p.color)!;
+    if (random > 0.95) {
+      return {
+        x: p.x,
+        y: p.y,
+        color:
+          currColorIndex == nColors - 1
+            ? palette[0]
+            : palette[currColorIndex + 1]
+      };
+    } else if (random < 0.05) {
+      return {
+        x: p.x,
+        y: p.y,
+        color:
+          currColorIndex == 0
+            ? palette[nColors - 1]
+            : palette[currColorIndex - 1]
+      };
+    } else {
+      return p;
+    }
+  });
+
+  return newPixels;
 }
 
 const IndexPage = () => {
@@ -127,28 +183,26 @@ const IndexPage = () => {
       <div className="container">
         <div style={{ gridArea: 'styling' }}>
           <h3>Color Palette</h3>
-          <div>
+          <div style={{ display: 'flex' }}>
             <input
               type="range"
               min="1"
               max="4"
               value={colorPalette}
               onChange={(e) => setColorPalette(parseInt(e.target.value))}
-              style={{ width: '256px' }}
             />
-            {getScale(colorPalette).name}
+            <p>{getScale(colorPalette).name}</p>
           </div>
           <h3>Generator</h3>
-          <div>
+          <div style={{ display: 'flex' }}>
             <input
               type="range"
               min="1"
               max="2"
               value={generator}
               onChange={(e) => setGenerator(parseInt(e.target.value))}
-              style={{ width: '256px' }}
             />
-            {generator == 1 ? 'row' : 'circle'}
+            <p>{generator == 1 ? 'row' : 'circle'}</p>
           </div>
         </div>
 
@@ -166,40 +220,37 @@ const IndexPage = () => {
 
         <div style={{ gridArea: 'dimensions' }}>
           <h3>Width</h3>
-          <div>
+          <div style={{ display: 'flex' }}>
             <input
               type="range"
               min="1"
-              max="64"
+              max="255"
               value={width}
               onChange={(e) => setWidth(parseInt(e.target.value))}
-              style={{ width: '256px' }}
             />
-            {width}
+            <p>{width}</p>
           </div>
           <h3>Height</h3>
-          <div>
+          <div style={{ display: 'flex' }}>
             <input
               type="range"
               min="1"
-              max="64"
+              max="255"
               value={height}
               onChange={(e) => setHeight(parseInt(e.target.value))}
-              style={{ width: '256px' }}
             />
-            {height}
+            <p>{height}</p>
           </div>
           <h3>Num Colors</h3>
-          <div>
+          <div style={{ display: 'flex', gap: '.5rem' }}>
             <input
               type="range"
               min="1"
               max="256"
               value={numColors}
               onChange={(e) => setNumColors(parseInt(e.target.value))}
-              style={{ width: '256px' }}
             />
-            {numColors}
+            <p>{numColors}</p>
           </div>
         </div>
       </div>
@@ -226,16 +277,6 @@ const IndexPage = () => {
       )}
 
       <style jsx>{`
-        .art {
-          grid-area: art;
-          display: flex;
-        }
-
-        .art img {
-          width: 512px;
-          height: 512px;
-        }
-
         .container {
           display: grid;
           gap: 0.5rem;
@@ -243,6 +284,24 @@ const IndexPage = () => {
           grid-template-rows: repeat(3, auto);
           grid-template-areas: 'styling art dimensions';
           padding: 4rem;
+          justify-items: center;
+        }
+        .art {
+          grid-area: art;
+          display: flex;
+        }
+
+        .art img {
+          width: 40vw;
+          height: 40vw;
+        }
+
+        p {
+          width: 10rem;
+        }
+
+        input {
+          width: 15vw;
         }
 
         @media only screen and (max-width: 768px) {
@@ -257,8 +316,17 @@ const IndexPage = () => {
           }
 
           .art img {
+            margin-bottom: 1rem;
             width: 85vw;
             height: 85vw;
+          }
+
+          h3 {
+            margin: 0;
+            padding: 0;
+          }
+          input {
+            width: 65vw;
           }
         }
       `}</style>

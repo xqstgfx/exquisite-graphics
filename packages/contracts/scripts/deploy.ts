@@ -23,8 +23,10 @@ async function start() {
   const addressBook = JSON.parse(
     await fs.readFileSync(addressesPath).toString()
   );
+  const deployNetwork =
+    chainId == 4 ? 'rinkeby' : chainId == 80001 ? 'mumbai' : 'mainnet';
 
-  hre.changeNetwork('mumbai');
+  hre.changeNetwork(deployNetwork);
 
   if (!addressBook.render) {
     console.log('Deploying exquisite graphics...');
@@ -37,11 +39,12 @@ async function start() {
     console.log('Waiting for more confirmations before verify…');
     const tx = await deployTx.deployTransaction.wait(10);
     console.log('Verifying contract...');
-    await hre.run('verify:verify', {
-      address: addressBook.render,
-      constructorArguments: []
-    });
   }
+
+  await hre.run('verify:verify', {
+    address: addressBook.render,
+    constructorArguments: []
+  });
 
   console.log('Deployed!');
 }

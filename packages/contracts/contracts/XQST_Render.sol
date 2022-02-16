@@ -9,8 +9,8 @@ contract XQST_RENDER {
   using DynamicBuffer for bytes;
 
   uint16 constant MAX_COLORS = 256;
-  uint8 constant MAX_ROWS = 64;
-  uint8 constant MAX_COLS = 64;
+  uint8 constant MAX_ROWS = 255;
+  uint8 constant MAX_COLS = 255;
 
   struct SVGBuffers {
     bytes buffer;
@@ -165,12 +165,8 @@ contract XQST_RENDER {
     if (svgData.numColors > 1 || !svgData.hasBackground) {
       _setColorIndexLookup(data, svgData);
       getRectSVG(svgData, buffers);
-      console.log('Gas Used Rect', startGas - gasleft());
-      console.log('Gas Left Rect', gasleft());
-      buffers.buffer.appendSafe('</g></svg>');
-    } else {
-      buffers.buffer.appendSafe('</g></svg>');
     }
+    buffers.buffer.appendSafe('</svg>');
 
     startGas = gasleft();
     // output the output buffer to string
@@ -282,7 +278,7 @@ contract XQST_RENDER {
     internal
     view
   {
-    buffers.buffer = DynamicBuffer.allocate(2**19);
+    buffers.buffer = DynamicBuffer.allocate(2**22);
   }
 
   function _setupSVGHeader(SVGMetadata memory meta, SVGBuffers memory buffers)
@@ -293,10 +289,14 @@ contract XQST_RENDER {
       buffers.buffer.appendSafe(
         abi.encodePacked(
           '<svg xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" version="1.1" viewBox="0 0 ',
-          toBytes(meta.width * 16),
+          toBytes(meta.width),
           ' ',
+          toBytes(meta.height),
+          '" width="',
+          toBytes(meta.width * 16),
+          '" height="',
           toBytes(meta.height * 16),
-          '"><g transform="scale(16 16)"><rect fill="#',
+          '"><rect fill="#',
           meta.palette[meta.backgroundColorIndex],
           '" height="',
           meta.lookup[meta.height],
@@ -309,10 +309,14 @@ contract XQST_RENDER {
       buffers.buffer.appendSafe(
         abi.encodePacked(
           '<svg xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" version="1.1" viewBox="0 0 ',
-          toBytes(meta.width * 16),
+          toBytes(meta.width),
           ' ',
+          toBytes(meta.height),
+          '" width="',
+          toBytes(meta.width * 16),
+          '" height="',
           toBytes(meta.height * 16),
-          '"><g transform="scale(16 16)">'
+          '">'
         )
       );
     }
