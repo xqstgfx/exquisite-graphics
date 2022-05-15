@@ -78,11 +78,6 @@ function generatePixelHeader(
   let lastByte = 0;
 
   if (options) {
-    // TODO, use get bit and set bit to do this.
-    if (options.paletteInHeader && options.paletteInHeader == 1) {
-      lastByte |= 1 << 1;
-    }
-
     if (options.backgroundEnabled && options.backgroundEnabled == 1) {
       lastByte |= 1;
     }
@@ -163,7 +158,7 @@ function generatePalette(palette: string[], genPalette: number) {
   let s = '';
 
   palette.map((color) => {
-    s += getDataHexString(color);
+    s += color.replace('#', '');
   });
 
   // console.log(s);
@@ -192,7 +187,7 @@ async function renderCubeHelixRLE(
     options
   )}33000000111111112222222233333300`;
 
-  const result = await renderer.renderSVG(data);
+  const result = await renderer.draw(data);
 
   // TODO fix getSVG to do both
   if (backgroundEnabled) {
@@ -257,7 +252,7 @@ async function renderCubeHelix(
     )}${randBytes}`;
   }
 
-  const result = await renderer.renderSVG(data);
+  const result = await renderer.draw(data);
 
   // TODO fix getSVG to do both
   if (backgroundEnabled) {
@@ -297,7 +292,7 @@ async function renderRainbow(
     numColors
   )}`;
 
-  const result = await renderer.renderSVG(data);
+  const result = await renderer.draw(data);
   saveSVG(
     result,
     suiteName,
@@ -368,6 +363,7 @@ describe('Renderer', () => {
       const result = await renderer.decodeHeader(
         '0x' +
           generatePixelHeader(WIDTH, HEIGHT, NUM_COLORS) +
+          generatePalette(RAINBOW_SCALE.colors(NUM_COLORS), 1) +
           generatePixels(WIDTH, HEIGHT, NUM_COLORS)
         // ['0x1111222233334444']
         // generatePixels(16, 16, 16)
@@ -439,8 +435,8 @@ describe('Renderer', () => {
   for (let v = 256; v <= 256; v += 1) {
     describe(`56x56 - ${v} Colors`, function () {
       it(`Should render 56x56 with ${v} Colors`, async function () {
-        const WIDTH = 66;
-        const HEIGHT = 66;
+        const WIDTH = 65;
+        const HEIGHT = 65;
         const NUM_COLORS = 256;
 
         console.log('render rainbow');
@@ -452,6 +448,8 @@ describe('Renderer', () => {
           WIDTH,
           NUM_COLORS
         );
+
+        // console.log(done);
 
         const png = await sharp(Buffer.from(done))
           .resize(WIDTH, HEIGHT)
