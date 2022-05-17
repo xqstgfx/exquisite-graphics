@@ -1,7 +1,81 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
+import 'hardhat/console.sol';
+import './interfaces/IGraphics.sol';
+import './interfaces/IRenderContext.sol';
+
 library helpers {
+  function _getPixelColorLUT(bytes memory data, IGraphics.Header memory header)
+    internal
+    view
+    returns (uint8[] memory table)
+  {
+    uint256 startGas = gasleft();
+    uint8 workingByte;
+    table = new uint8[](header.totalPixels + 8); // add extra byte for safety
+    if (header.bpp == 1) {
+      for (uint256 i = 0; i < header.totalPixels; i += 8) {
+        workingByte = uint8(data[i / 8 + header.dataStart]);
+        table[i] = workingByte >> 7;
+        table[i + 1] = (workingByte >> 6) & 0x01;
+        table[i + 2] = (workingByte >> 5) & 0x01;
+        table[i + 3] = (workingByte >> 4) & 0x01;
+        table[i + 4] = (workingByte >> 3) & 0x01;
+        table[i + 5] = (workingByte >> 2) & 0x01;
+        table[i + 6] = (workingByte >> 1) & 0x01;
+        table[i + 7] = workingByte & 0x01;
+      }
+    } else if (header.bpp == 2) {
+      for (uint256 i = 0; i < header.totalPixels; i += 4) {
+        workingByte = uint8(data[i / 4 + header.dataStart]);
+        table[i] = workingByte >> 6;
+        table[i + 1] = (workingByte >> 4) & 0x03;
+        table[i + 2] = (workingByte >> 2) & 0x03;
+        table[i + 3] = workingByte & 0x03;
+      }
+    } else if (header.bpp == 4) {
+      for (uint256 i = 0; i < header.totalPixels; i += 2) {
+        workingByte = uint8(data[i / 2 + header.dataStart]);
+        table[i] = workingByte >> 4;
+        table[i + 1] = workingByte & 0x0F;
+      }
+    } else {
+      for (uint256 i = 0; i < header.totalPixels; i++) {
+        table[i] = uint8(data[i + header.dataStart]);
+      }
+    }
+
+    console.log('color lut builing gas used', startGas - gasleft());
+  }
+
+  function _getNumberLUT(IGraphics.Header memory header)
+    internal
+    view
+    returns (bytes[] memory lookup)
+  {
+    uint256 max;
+
+    max = (header.width > header.height ? header.width : header.height) + 1;
+    max = header.numColors > max ? header.numColors : max;
+
+    // TODO, optimize this into bytes8? or bytes16?
+    lookup = new bytes[](max);
+    for (uint256 i = 0; i < max; i++) {
+      lookup[i] = helpers.toBytes(i);
+    }
+  }
+
+  function _canSkipPixel(IRenderContext.Context memory ctx, uint256 colorIndex)
+    internal
+    pure
+    returns (bool)
+  {
+    return ((ctx.header.hasBackground &&
+      colorIndex == ctx.header.backgroundColorIndex) ||
+      (ctx.header.numColors == 0 && colorIndex == 0));
+  }
+
   function toBytes(uint256 value) internal pure returns (bytes memory) {
     // Inspired by OraclizeAPI's implementation - MIT license
     // https://github.com/oraclize/ethereum-api/blob/b42146b063c7d6ee1358846c198246239e9360e8/oraclizeAPI_0.4.25.sol
