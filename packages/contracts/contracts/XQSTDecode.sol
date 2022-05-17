@@ -7,7 +7,7 @@ import {helpers} from './XQSTHelpers.sol';
 library XQSTDecode {
   function _decodeHeader(bytes memory data)
     internal
-    view
+    pure
     returns (IGraphics.Header memory header)
   {
     require(data.length >= 8, 'missing header');
@@ -39,7 +39,7 @@ library XQSTDecode {
 
   function _decodePalette(bytes memory data, IGraphics.Header memory header)
     internal
-    view
+    pure
     returns (bytes8[] memory palette)
   {
     if (header.numColors > 0) {

@@ -42,7 +42,7 @@ contract XQST_RENDER is IGraphics, IRenderContext {
   }
 
   // basically use this to check if something is even XQST Graphics Compatible
-  function validHeader(bytes memory data) public view returns (bool) {
+  function validHeader(bytes memory data) public pure returns (bool) {
     return v._validateHeader(decode._decodeHeader(data));
   }
 
@@ -50,21 +50,21 @@ contract XQST_RENDER is IGraphics, IRenderContext {
   // TODO does decode, decodeHeader, decodePalette, decodeData, all belong
   //      in a xqstgfx utils library/contract?
   //      I would want to also provide the splice options there. Replace palette/Replace Data - to do the blitmap thing.
-  function decode(bytes memory data)
+  function decodeData(bytes memory data)
     public
     view
-    returns (RenderContext memory ctx)
+    returns (Context memory ctx)
   {
     _init(ctx, data, true);
   }
 
-  function decodeHeader(bytes memory data) public view returns (Header memory) {
+  function decodeHeader(bytes memory data) public pure returns (Header memory) {
     return decode._decodeHeader(data);
   }
 
   function decodePalette(bytes memory data)
     public
-    view
+    pure
     returns (bytes8[] memory)
   {
     return decode._decodePalette(data, decode._decodeHeader(data));
@@ -111,7 +111,7 @@ contract XQST_RENDER is IGraphics, IRenderContext {
     return string(buffer);
   }
 
-  function _writeSVG(Context memory ctx, bytes memory buffer) private view {
+  function _writeSVG(Context memory ctx, bytes memory buffer) private pure {
     _writeSVGHeader(ctx, buffer);
 
     if (ctx.header.numColors == 0 || ctx.header.numColors > 1)
@@ -122,7 +122,7 @@ contract XQST_RENDER is IGraphics, IRenderContext {
 
   function _writeSVGHeader(Context memory ctx, bytes memory buffer)
     internal
-    view
+    pure
   {
     uint256 scale = uint256(ctx.header.scale);
     // default scale to >=512px.
@@ -168,7 +168,7 @@ contract XQST_RENDER is IGraphics, IRenderContext {
 
   function _writeSVGRects(Context memory ctx, bytes memory buffer)
     internal
-    view
+    pure
   {
     uint256 colorIndex;
     uint256 c;

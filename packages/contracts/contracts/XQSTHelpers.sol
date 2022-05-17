@@ -51,7 +51,7 @@ library helpers {
 
   function _getNumberLUT(IGraphics.Header memory header)
     internal
-    view
+    pure
     returns (bytes[] memory lookup)
   {
     uint256 max;

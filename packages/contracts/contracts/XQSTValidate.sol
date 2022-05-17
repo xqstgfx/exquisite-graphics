@@ -4,6 +4,7 @@ pragma solidity ^0.8.9;
 import './interfaces/IGraphics.sol';
 import './interfaces/IRenderContext.sol';
 import {helpers} from './XQSTHelpers.sol';
+import {XQSTDecode as decode} from './XQSTDecode.sol';
 
 library XQSTValidate {
   uint16 public constant MAX_COLORS = 256;
@@ -11,15 +12,15 @@ library XQSTValidate {
   uint8 public constant MAX_ROWS = 255; // TODO
   uint8 public constant MAX_COLS = 255; // TODO
 
-  function _validate(bytes memory data) returns (bool) {
-    Context memory ctx;
+  function _validate(bytes memory data) internal view returns (bool) {
+    IRenderContext.Context memory ctx;
 
-    context.header = _decodeHeader(data);
+    ctx.header = decode._decodeHeader(data);
     _validateHeader(ctx.header);
     _validateDataLength(ctx.header, data);
 
-    context.palette = _decodePalette(data, context.header);
-    context.pixelColorLUT = _decodePixelColorLUT(data, context.header);
+    ctx.palette = decode._decodePalette(data, ctx.header);
+    ctx.pixelColorLUT = helpers._getPixelColorLUT(data, ctx.header);
     _validateDataContents(ctx);
 
     return true;
@@ -72,7 +73,7 @@ library XQSTValidate {
   function _validateDataContents(
     bytes memory data,
     IGraphics.Header memory header
-  ) internal pure returns (bool) {
+  ) internal view returns (bool) {
     uint8[] memory pixelColorLUT = helpers._getPixelColorLUT(data, header);
     for (uint256 i = 0; i < header.totalPixels; i++) {
       require(
@@ -80,6 +81,8 @@ library XQSTValidate {
         'pixel color index is greater than number of colors'
       );
     }
+
+    return true;
   }
 
   function _validateDataContents(IRenderContext.Context memory ctx)
