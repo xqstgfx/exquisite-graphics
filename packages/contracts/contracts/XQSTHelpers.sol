@@ -1,54 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import 'hardhat/console.sol';
 import './interfaces/IGraphics.sol';
 import './interfaces/IRenderContext.sol';
 
-library helpers {
-  function _getPixelColorLUT(bytes memory data, IGraphics.Header memory header)
-    internal
-    view
-    returns (uint8[] memory table)
-  {
-    uint256 startGas = gasleft();
-    uint8 workingByte;
-    table = new uint8[](header.totalPixels + 8); // add extra byte for safety
-    if (header.bpp == 1) {
-      for (uint256 i = 0; i < header.totalPixels; i += 8) {
-        workingByte = uint8(data[i / 8 + header.dataStart]);
-        table[i] = workingByte >> 7;
-        table[i + 1] = (workingByte >> 6) & 0x01;
-        table[i + 2] = (workingByte >> 5) & 0x01;
-        table[i + 3] = (workingByte >> 4) & 0x01;
-        table[i + 4] = (workingByte >> 3) & 0x01;
-        table[i + 5] = (workingByte >> 2) & 0x01;
-        table[i + 6] = (workingByte >> 1) & 0x01;
-        table[i + 7] = workingByte & 0x01;
-      }
-    } else if (header.bpp == 2) {
-      for (uint256 i = 0; i < header.totalPixels; i += 4) {
-        workingByte = uint8(data[i / 4 + header.dataStart]);
-        table[i] = workingByte >> 6;
-        table[i + 1] = (workingByte >> 4) & 0x03;
-        table[i + 2] = (workingByte >> 2) & 0x03;
-        table[i + 3] = workingByte & 0x03;
-      }
-    } else if (header.bpp == 4) {
-      for (uint256 i = 0; i < header.totalPixels; i += 2) {
-        workingByte = uint8(data[i / 2 + header.dataStart]);
-        table[i] = workingByte >> 4;
-        table[i + 1] = workingByte & 0x0F;
-      }
-    } else {
-      for (uint256 i = 0; i < header.totalPixels; i++) {
-        table[i] = uint8(data[i + header.dataStart]);
-      }
-    }
-
-    console.log('color lut builing gas used', startGas - gasleft());
-  }
-
+library XQSTHelpers {
+  /// Gets a table of numbers
+  /// @dev index 0 is the string '0' and index 255 is the string '255'
+  /// @param header used to figure out how many numbers we need to store
+  /// @return lookup the table of numbers
   function _getNumberLUT(IGraphics.Header memory header)
     internal
     pure
@@ -59,23 +19,35 @@ library helpers {
     max = (header.width > header.height ? header.width : header.height) + 1;
     max = header.numColors > max ? header.numColors : max;
 
-    // TODO, optimize this into bytes8? or bytes16?
     lookup = new bytes[](max);
     for (uint256 i = 0; i < max; i++) {
-      lookup[i] = helpers.toBytes(i);
+      lookup[i] = toBytes(i);
     }
   }
 
+  /// Determines if we can skip rendering a pixel
+  /// @dev Can skip rendering a pixel under 3 Conditions
+  /// @dev 1. The pixel's color is the same as the background color
+  /// @dev 2. We are rendering in 0-color mode, and the pixel is a 0
+  /// @dev 3. The pixel's color doesn't exist in the palette
+  /// @param ctx the render context
+  /// @param colorIndex the index of the color for this pixel
   function _canSkipPixel(IRenderContext.Context memory ctx, uint256 colorIndex)
     internal
     pure
     returns (bool)
   {
+    //      (note: maybe this is better as an error? not sure.
+    //       it's a nice way of adding transparency to the image)
     return ((ctx.header.hasBackground &&
       colorIndex == ctx.header.backgroundColorIndex) ||
-      (ctx.header.numColors == 0 && colorIndex == 0));
+      (ctx.header.numColors == 0 && colorIndex == 0) ||
+      colorIndex >= ctx.header.numColors);
   }
 
+  /// Returns the bytes representation of a number
+  /// @param value the number to convert to bytes
+  /// @return bytes representation of the number
   function toBytes(uint256 value) internal pure returns (bytes memory) {
     // Inspired by OraclizeAPI's implementation - MIT license
     // https://github.com/oraclize/ethereum-api/blob/b42146b063c7d6ee1358846c198246239e9360e8/oraclizeAPI_0.4.25.sol
@@ -98,6 +70,9 @@ library helpers {
     return buffer;
   }
 
+  /// Gets the ascii hex character for a byte
+  /// @param char the byte to get the ascii hex character for
+  /// @return uint8 ascii hex character for the byte
   function _getHexChar(bytes1 char) internal pure returns (uint8) {
     return
       (uint8(char) > 9)
@@ -105,6 +80,9 @@ library helpers {
         : (uint8(char) + 48); // ascii 0-9
   }
 
+  /// Converts 3 bytes to a RGBA hex string
+  /// @param b the bytes to convert to a color
+  /// @return bytes8 the color in RBGA hex format
   function _toColor(bytes3 b) internal pure returns (bytes8) {
     uint64 b6 = 0x0000000000006666;
     for (uint256 i = 0; i < 3; i++) {
@@ -115,6 +93,9 @@ library helpers {
     return bytes8(b6);
   }
 
+  /// Converts 4 bytes to a RGBA hex string
+  /// @param b the bytes to convert to a color
+  /// @return bytes8 the color in RBGA hex format
   function _toHexBytes8(bytes4 b) internal pure returns (bytes8) {
     uint64 b8;
     for (uint256 i = 0; i < 4; i++) {

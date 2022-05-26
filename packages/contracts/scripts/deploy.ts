@@ -1,7 +1,7 @@
 import fs from 'fs-extra';
 import { JsonRpcProvider } from '@ethersproject/providers';
 import { Wallet } from '@ethersproject/wallet';
-import { XQSTRENDER__factory } from '../typechain';
+import { XQSTGFX__factory } from '../typechain';
 import hre from 'hardhat';
 import 'hardhat-change-network';
 
@@ -30,7 +30,7 @@ async function start() {
 
   if (!addressBook.render) {
     console.log('Deploying exquisite graphics...');
-    const deployTx = await new XQSTRENDER__factory(wallet).deploy();
+    const deployTx = await new XQSTGFX__factory(wallet).deploy();
     console.log('Deploy TX: ', deployTx.deployTransaction.hash);
     await deployTx.deployed();
     console.log('exquisite graphics deployed at ', deployTx.address);

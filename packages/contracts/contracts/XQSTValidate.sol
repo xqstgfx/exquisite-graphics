@@ -3,7 +3,7 @@ pragma solidity ^0.8.9;
 
 import './interfaces/IGraphics.sol';
 import './interfaces/IRenderContext.sol';
-import {helpers} from './XQSTHelpers.sol';
+import {XQSTHelpers as helpers} from './XQSTHelpers.sol';
 import {XQSTDecode as decode} from './XQSTDecode.sol';
 
 library XQSTValidate {
@@ -12,91 +12,90 @@ library XQSTValidate {
   uint8 public constant MAX_ROWS = 255; // TODO
   uint8 public constant MAX_COLS = 255; // TODO
 
-  function _validate(bytes memory data) internal view returns (bool) {
+  /// @notice validates if the given data is a valid .xqst file
+  /// @param data Binary data in the .xqst format.
+  /// @return bool true if the data is valid
+  function _validate(bytes memory data) internal pure returns (bool) {
     IRenderContext.Context memory ctx;
 
     ctx.header = decode._decodeHeader(data);
     _validateHeader(ctx.header);
     _validateDataLength(ctx.header, data);
-
     ctx.palette = decode._decodePalette(data, ctx.header);
-    ctx.pixelColorLUT = helpers._getPixelColorLUT(data, ctx.header);
-    _validateDataContents(ctx);
 
     return true;
   }
 
+  /// @notice checks if the given data contains a valid .xqst header
+  /// @param header the header of the data
+  /// @return bool true if the header is valid
   function _validateHeader(IGraphics.Header memory header)
     internal
     pure
     returns (bool)
   {
-    // TODO move to errors? should this be a modifier?
-    require(header.width * header.height < MAX_PIXELS, 'image is too large');
-    require(header.height <= MAX_ROWS, 'number of rows is greater than max');
-    require(header.width <= MAX_COLS, 'number of columns is greater than max');
+    if (header.width * header.height > MAX_PIXELS)
+      revert IGraphics.ExceededMaxPixels();
+    if (header.height > MAX_ROWS) revert IGraphics.ExceededMaxRows();
+    if (header.width > MAX_COLS) revert IGraphics.ExceededMaxColumns();
+    if (header.numColors > MAX_COLORS) revert IGraphics.ExceededMaxColors();
 
-    require(
-      header.numColors <= MAX_COLORS,
-      'number of colors is greater than max'
-    );
-    if (header.hasBackground) {
-      require(
-        header.backgroundColorIndex < header.numColors,
-        'background color index is greater than number of colors'
-      );
+    if (
+      header.hasBackground && header.backgroundColorIndex >= header.numColors
+    ) {
+      revert IGraphics.BackgroundColorIndexOutOfRange();
     }
 
     return true;
   }
 
+  /// @notice checks if the given data is long enough to render an .xqst image
+  /// @param header the header of the data
+  /// @param data the data to validate
+  /// @return bool true if the data is long enough
   function _validateDataLength(
     IGraphics.Header memory header,
     bytes memory data
   ) internal pure returns (bool) {
-    // if 0
-    // if 1 color
+    // if 0 - palette has no data. data is binary data of length of the number of pixels
+    // if 1 color - palette
     // if > 1 color
 
     // if (header.numColors > 1 || !header.hasBackground) {
     uint256 pixelDataLen = (header.totalPixels % 2 == 0) || header.ppb == 1
       ? (header.totalPixels / header.ppb)
       : (header.totalPixels / header.ppb) + 1;
-    require(
-      data.length >= header.dataStart + pixelDataLen,
-      'data length is incorrect'
-    );
+
+    if (data.length < header.dataStart + pixelDataLen)
+      revert IGraphics.NotEnoughData();
     // }
     return true;
   }
 
-  function _validateDataContents(
-    bytes memory data,
-    IGraphics.Header memory header
-  ) internal view returns (bool) {
-    uint8[] memory pixelColorLUT = helpers._getPixelColorLUT(data, header);
-    for (uint256 i = 0; i < header.totalPixels; i++) {
-      require(
-        pixelColorLUT[i] < header.numColors,
-        'pixel color index is greater than number of colors'
-      );
-    }
+  // TODO: remove this and below function? not used if we allow blank (non rendered) pixels
+  // function _validateDataContents(
+  //   bytes memory data,
+  //   IGraphics.Header memory header
+  // ) internal view returns (bool) {
+  //   uint8[] memory pixelColorLUT = decode._getPixelColorLUT(data, header);
+  //   for (uint256 i = 0; i < header.totalPixels; i++) {
+  //     if (pixelColorLUT[i] >= header.numColors)
+  //       revert IGraphics.PixelColorIndexOutOfRange();
+  //   }
 
-    return true;
-  }
+  //   return true;
+  // }
 
-  function _validateDataContents(IRenderContext.Context memory ctx)
-    internal
-    pure
-    returns (bool)
-  {
-    for (uint256 i = 0; i < ctx.header.totalPixels; i++) {
-      require(
-        ctx.pixelColorLUT[i] < ctx.header.numColors,
-        'data contains invalid color index'
-      );
-    }
+  // function _validateDataContents(IRenderContext.Context memory ctx)
+  //   internal
+  //   pure
+  //   returns (bool)
+  // {
+  //   for (uint256 i = 0; i < ctx.header.totalPixels; i++) {
+  //     if (ctx.pixelColorLUT[i] >= ctx.header.numColors)
+  //       revert IGraphics.PixelColorIndexOutOfRange();
+  //   }
 
-    return true;
-  }
+  //   return true;
+  // }
 }

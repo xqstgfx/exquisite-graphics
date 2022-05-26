@@ -4,7 +4,7 @@ import fs from 'fs';
 
 import chroma from 'chroma-js';
 
-import { XQSTRENDER } from '../typechain';
+import { XQSTGFX } from '../typechain';
 import { arrayify, hexlify } from '@ethersproject/bytes';
 import { utils } from 'ethers';
 import sharp from 'sharp';
@@ -167,7 +167,7 @@ function generatePalette(palette: string[], genPalette: number) {
 }
 
 async function renderCubeHelixRLE(
-  renderer: XQSTRENDER,
+  renderer: XQSTGFX,
   suiteName: string,
   numRows: number,
   numCols: number,
@@ -204,7 +204,7 @@ async function renderCubeHelixRLE(
 }
 
 async function renderCubeHelix(
-  renderer: XQSTRENDER,
+  renderer: XQSTGFX,
   suiteName: string,
   numRows: number,
   numCols: number,
@@ -269,7 +269,7 @@ async function renderCubeHelix(
 }
 
 async function renderRainbow(
-  renderer: XQSTRENDER,
+  renderer: XQSTGFX,
   suiteName: string,
   numRows: number,
   numCols: number,
@@ -340,15 +340,15 @@ function generatePixels(nRows: number, nCols: number, nColors: number) {
 }
 
 describe('Renderer', () => {
-  let renderer: XQSTRENDER;
+  let renderer: XQSTGFX;
 
   before(async () => {
     // 1
     const signers = await ethers.getSigners();
 
     // 2
-    const rendererFactory = await ethers.getContractFactory('XQST_RENDER');
-    renderer = (await rendererFactory.deploy()) as XQSTRENDER;
+    const rendererFactory = await ethers.getContractFactory('XQSTGFX');
+    renderer = (await rendererFactory.deploy()) as XQSTGFX;
   });
 
   beforeEach(async () => {});

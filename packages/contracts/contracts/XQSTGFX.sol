@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import 'hardhat/console.sol';
+// import 'hardhat/console.sol';
 import './interfaces/IGraphics.sol';
 import './interfaces/IRenderContext.sol';
-import {helpers} from './XQSTHelpers.sol';
+import {XQSTHelpers as helpers} from './XQSTHelpers.sol';
 import {XQSTDecode as decode} from './XQSTDecode.sol';
 import {XQSTValidate as v} from './XQSTValidate.sol';
 import '@divergencetech/ethier/contracts/utils/DynamicBuffer.sol';
 
-contract XQST_RENDER is IGraphics, IRenderContext {
+contract XQSTGFX is IGraphics, IRenderContext {
   using DynamicBuffer for bytes;
 
   enum DrawType {
@@ -17,51 +17,75 @@ contract XQST_RENDER is IGraphics, IRenderContext {
     RECTS
   }
 
-  function draw(bytes memory data) public view returns (string memory) {
+  /// @notice Draw an SVG from the provided data
+  /// @param data Binary data in the .xqst format.
+  /// @return string the <svg>
+  function draw(bytes memory data) public pure returns (string memory) {
     return _draw(data, DrawType.SVG, true);
   }
 
-  function drawUnsafe(bytes memory data) public view returns (string memory) {
+  /// @notice Draw an SVG from the provided data. No validation
+  /// @param data Binary data in the .xqst format.
+  /// @return string the <svg>
+  function drawUnsafe(bytes memory data) public pure returns (string memory) {
     return _draw(data, DrawType.SVG, false);
   }
 
-  function drawRects(bytes memory data) public view returns (string memory) {
+  /// @notice Draw the <rect> elements of an SVG from the data
+  /// @param data Binary data in the .xqst format.
+  /// @return string the <rect> elements
+  function drawRects(bytes memory data) public pure returns (string memory) {
     return _draw(data, DrawType.RECTS, true);
   }
 
+  /// @notice Draw the <rect> elements of an SVG from the data. No validation
+  /// @param data Binary data in the .xqst format.
+  /// @return string the <rect> elements
   function drawRectsUnsafe(bytes memory data)
     public
-    view
+    pure
     returns (string memory)
   {
     return _draw(data, DrawType.RECTS, false);
   }
 
-  function valid(bytes memory data) public view returns (bool) {
+  /// @notice validates if the given data is a valid .xqst file
+  /// @param data Binary data in the .xqst format.
+  /// @return bool true if the data is valid
+  function valid(bytes memory data) public pure returns (bool) {
     return v._validate(data);
   }
 
   // basically use this to check if something is even XQST Graphics Compatible
+  /// @notice validates the header for some data is a valid .xqst header
+  /// @param data Binary data in the .xqst format.
+  /// @return bool true if the header is valid
   function validHeader(bytes memory data) public pure returns (bool) {
     return v._validateHeader(decode._decodeHeader(data));
   }
 
   // TODO is this really necessary to be public?
-  // TODO does decode, decodeHeader, decodePalette, decodeData, all belong
+  //      does decode, decodeHeader, decodePalette, decodeData, all belong
   //      in a xqstgfx utils library/contract?
   //      I would want to also provide the splice options there. Replace palette/Replace Data - to do the blitmap thing.
-  function decodeData(bytes memory data)
-    public
-    view
-    returns (Context memory ctx)
-  {
-    _init(ctx, data, true);
-  }
+  // function decodeData(bytes memory data)
+  //   public
+  //   view
+  //   returns (Context memory ctx)
+  // {
+  //   _init(ctx, data, true);
+  // }
 
+  /// @notice Decodes the header from a binary .xqst blob
+  /// @param data Binary data in the .xqst format.
+  /// @return Header the decoded header
   function decodeHeader(bytes memory data) public pure returns (Header memory) {
     return decode._decodeHeader(data);
   }
 
+  /// @notice Decodes the palette from a binary .xqst blob
+  /// @param data Binary data in the .xqst format.
+  /// @return bytes8[] the decoded palette
   function decodePalette(bytes memory data)
     public
     pure
@@ -70,11 +94,15 @@ contract XQST_RENDER is IGraphics, IRenderContext {
     return decode._decodePalette(data, decode._decodeHeader(data));
   }
 
+  /// Initializes the Render Context from the given data
+  /// @param ctx Render Context to initialize
+  /// @param data Binary data in the .xqst format.
+  /// @param safe bool whether to validate the data
   function _init(
     Context memory ctx,
     bytes memory data,
     bool safe
-  ) private view {
+  ) private pure {
     ctx.header = decode._decodeHeader(data);
     if (safe) {
       v._validateHeader(ctx.header);
@@ -82,22 +110,20 @@ contract XQST_RENDER is IGraphics, IRenderContext {
     }
 
     ctx.palette = decode._decodePalette(data, ctx.header);
-
-    ctx.pixelColorLUT = helpers._getPixelColorLUT(data, ctx.header);
-    // TODO is this necessary? It certainly would break the render later on.
-    // Do we force this validation when we decode the pixels?
-    // This costs 1,326,762 gas at 65x65 in 256 Color.
-    if (safe) v._validateDataContents(ctx);
-
+    ctx.pixelColorLUT = decode._getPixelColorLUT(data, ctx.header);
     ctx.numberLUT = helpers._getNumberLUT(ctx.header);
   }
 
+  /// Draws the SVG or <rect> elements from the given data
+  /// @param data Binary data in the .xqst format.
+  /// @param t The SVG or Rectangles to draw
+  /// @param safe bool whether to validate the data
   function _draw(
     bytes memory data,
     DrawType t,
     bool safe
-  ) private view returns (string memory) {
-    uint256 startGas = gasleft();
+  ) private pure returns (string memory) {
+    // uint256 startGas = gasleft();
     Context memory ctx;
     bytes memory buffer = DynamicBuffer.allocate(2**18);
 
@@ -105,12 +131,15 @@ contract XQST_RENDER is IGraphics, IRenderContext {
 
     t == DrawType.RECTS ? _writeSVGRects(ctx, buffer) : _writeSVG(ctx, buffer);
 
-    console.log('Gas Used Result', startGas - gasleft());
-    console.log('Gas Left Result', gasleft());
+    // console.log('Gas Used Result', startGas - gasleft());
+    // console.log('Gas Left Result', gasleft());
 
     return string(buffer);
   }
 
+  /// Writes the entire SVG to the given buffer
+  /// @param ctx The Render Context
+  /// @param buffer The buffer to write the SVG to
   function _writeSVG(Context memory ctx, bytes memory buffer) private pure {
     _writeSVGHeader(ctx, buffer);
 
@@ -120,6 +149,9 @@ contract XQST_RENDER is IGraphics, IRenderContext {
     buffer.appendSafe('</svg>');
   }
 
+  /// Writes the SVG header to the given buffer
+  /// @param ctx The Render Context
+  /// @param buffer The buffer to write the SVG header to
   function _writeSVGHeader(Context memory ctx, bytes memory buffer)
     internal
     pure
@@ -151,7 +183,8 @@ contract XQST_RENDER is IGraphics, IRenderContext {
       )
     );
 
-    if (ctx.header.hasBackground || ctx.header.numColors == 1) {
+    // create a rect that fills the entirety of the svg as the background
+    if (ctx.header.hasBackground) {
       buffer.appendSafe(
         abi.encodePacked(
           '"<rect fill="#',
@@ -166,6 +199,9 @@ contract XQST_RENDER is IGraphics, IRenderContext {
     }
   }
 
+  /// Writes the SVG <rect> elements to the given buffer
+  /// @param ctx The Render Context
+  /// @param buffer The buffer to write the SVG <rect> elements to
   function _writeSVGRects(Context memory ctx, bytes memory buffer)
     internal
     pure
@@ -174,11 +210,11 @@ contract XQST_RENDER is IGraphics, IRenderContext {
     uint256 c;
     uint256 pixelNum;
 
-    // write every pixel into the buffer
+    // Write every pixel into the buffer
     while (pixelNum < ctx.header.totalPixels) {
       colorIndex = ctx.pixelColorLUT[pixelNum];
 
-      // If this color is the background we dont need to paint it with the cursor
+      // Check if we need to write a new rect to the buffer at all
       if (helpers._canSkipPixel(ctx, colorIndex)) {
         pixelNum++;
         continue;
