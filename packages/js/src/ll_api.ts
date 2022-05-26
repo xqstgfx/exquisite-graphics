@@ -350,6 +350,8 @@ const generateHeader = (header: ExquisiteBitmapHeader): Buffer => {
 
   headerData += last2Bytes.toString(16).padStart(4, '0');
 
+  console.log('header', headerData);
+
   return Buffer.from(headerData, 'hex');
 };
 
