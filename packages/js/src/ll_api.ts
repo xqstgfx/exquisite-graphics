@@ -72,8 +72,11 @@ export class PixelBuffer {
     this._initData();
 
     // set data
+    const colorChannels = header.alpha ? 4 : 3;
     this.dataBuffer = Buffer.from(
-      data.replace('0x', '').substring(16 + header.numColors * 16),
+      data
+        .replace('0x', '')
+        .substring(16 + header.numColors * colorChannels * 2),
       'hex'
     );
   }
