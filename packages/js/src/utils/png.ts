@@ -10,7 +10,6 @@ export const pngToPixels = async (img: string) => {
   const pixels: { x: number; y: number; color: string }[] = [];
 
   var png = PNG.sync.read(fs.readFileSync(img));
-
   if (png.width > 64 || png.height > 64) return pixels;
 
   let offset = 0;

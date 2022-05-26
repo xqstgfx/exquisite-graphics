@@ -9,7 +9,8 @@ const header: ExquisiteBitmapHeader = {
   width: 3,
   height: 5,
   numColors: 4,
-  paletteIncluded: true,
+  scaleFactor: 11,
+  alpha: false,
   backgroundIncluded: false,
   backgroundIndex: 0
 };
@@ -18,7 +19,7 @@ const buffer = new PixelBuffer(header, palette);
 
 describe('Buffer Init', () => {
   it('Buffer Header Proper', () => {
-    expect(buffer.getHeader() == '0x0103050004000002');
+    expect(buffer.getHeader() == '0x010305000402c002');
   });
 
   it('Buffer Palette Proper', () => {
@@ -104,8 +105,8 @@ describe('4x4 - 2 Colors', () => {
     const buffer = data as PixelBuffer;
 
     // TODO add more to llapi to test more cleanly and keep these
-    expect(buffer.getHeader()).to.eq('0x0104040002000003');
-    expect(buffer.getPalette()).to.eq('0x30303030303066666666666666666666');
+    expect(buffer.getHeader()).to.eq('0x0104040002000001'); // TODO this should now be something different.
+    expect(buffer.getPalette()).to.eq('0x000000ffffff');
     expect(buffer.getData()).to.eq('0x5555');
   });
 });
@@ -123,8 +124,8 @@ describe('5x5 - 2 Colors', () => {
     if (data == undefined) expect(0).to.eq(1);
     const buffer = data as PixelBuffer;
 
-    expect(buffer.getHeader()).to.eq('0x0105050002000003');
-    expect(buffer.getPalette()).to.eq('0x30303030303066666666666666666666');
+    expect(buffer.getHeader()).to.eq('0x0105050002000001');
+    expect(buffer.getPalette()).to.eq('0x000000ffffff');
     expect(buffer.getData()).to.eq('0x5294a500');
   });
 });

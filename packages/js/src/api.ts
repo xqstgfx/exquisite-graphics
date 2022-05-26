@@ -34,6 +34,12 @@ export const getSVG = (data: string) => {
   return getSVGPixelBuffer(buffer);
 };
 
+export const getRects = (data: string) => {
+  const buffer = new PixelBuffer();
+  buffer.from(data);
+  return getSVGRectsPixelBuffer(buffer);
+};
+
 // TODO this should definitely be in the LLAPI
 export const getSVGPixelBuffer = (buffer: PixelBuffer) => {
   let svg = `<svg xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" version="1.1" viewBox="0 0 ${
@@ -50,9 +56,24 @@ export const getSVGPixelBuffer = (buffer: PixelBuffer) => {
   return svg;
 };
 
+export const getSVGRectsPixelBuffer = (buffer: PixelBuffer) => {
+  return buffer
+    .toPixels()
+    .map(
+      (pixel) =>
+        `<rect fill="${pixel.color}" x="${pixel.x}" y="${pixel.y}" height="1" width="1"/>`
+    )
+    .join('');
+};
+
 export const getSVGPixels = (pixels: Pixel[]) => {
   const buffer = getBinarySVG_Array(pixels) as PixelBuffer;
   return getSVGPixelBuffer(buffer);
+};
+
+export const getSVGRects = (pixels: Pixel[]) => {
+  const buffer = getBinarySVG_Array(pixels) as PixelBuffer;
+  return getSVGRectsPixelBuffer(buffer);
 };
 
 // const getPixels
@@ -130,19 +151,27 @@ export const getBinarySVG_Array = (pixels: Pixel[]) => {
     paletteArr[value.index] = value.color;
   });
 
+  let alpha = false;
+  if (paletteArr.length > 1) {
+    const firstColorLen = paletteArr[0].replace('#', '').length;
+    if (firstColorLen == 4 || firstColorLen == 8) {
+      alpha = true;
+    }
+  }
+
   const header: ExquisiteBitmapHeader = {
     version: 1,
     width: width,
     height: height,
     numColors: palette.size,
-    paletteIncluded: true,
+    scaleFactor: 0,
+    alpha,
     backgroundIncluded: true,
     backgroundIndex: bestColor.index
   };
 
   // initialize buffer
   const buffer = new PixelBuffer(header, paletteArr);
-  console.log(buffer);
 
   pixels.map((pixel) => {
     const color = palette.get(pixel.color);

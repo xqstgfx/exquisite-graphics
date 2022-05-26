@@ -121,35 +121,6 @@ const b16StringLUT = new Map<string, string>([
   ['f', '66']
 ]);
 
-function getDataHexString(color: string) {
-  let s = '';
-  color = color.replace('#', '');
-  if (color.length == 6) {
-    for (let i = 0; i < color.length; i++) {
-      s += b16StringLUT.get(color[i]);
-    }
-    s += '6666';
-  } else if (color.length == 3) {
-    for (let i = 0; i < color.length; i++) {
-      s += b16StringLUT.get(color[i]);
-      s += b16StringLUT.get(color[i]);
-    }
-    s += '6666';
-  } else if (color.length == 4) {
-    for (let i = 0; i < color.length; i++) {
-      s += b16StringLUT.get(color[i]);
-      s += b16StringLUT.get(color[i]);
-    }
-  } else if (color.length == 8) {
-    for (let i = 0; i < color.length; i++) {
-      s += b16StringLUT.get(color[i]);
-    }
-  } else {
-    throw new Error('invalid color length');
-  }
-  return s;
-}
-
 function generatePalette(palette: string[], genPalette: number) {
   if (genPalette == 0) return '';
 

@@ -1,6 +1,5 @@
 // Functions for Hardcore Builders working with binary pixel format directly
 
-import { getDataHexString } from './utils/palette';
 import { isRGBA, isString, Pixel, PixelColor, PixelMap, Point } from './api';
 
 export type ExquisiteBitmapHeader = {
@@ -8,7 +7,8 @@ export type ExquisiteBitmapHeader = {
   width: number;
   height: number;
   numColors: number;
-  paletteIncluded: boolean;
+  scaleFactor: number;
+  alpha: boolean;
   backgroundIncluded: boolean;
   backgroundIndex: number;
 };
@@ -45,7 +45,8 @@ export class PixelBuffer {
         width: 0,
         height: 0,
         numColors: 0,
-        paletteIncluded: false,
+        scaleFactor: 0,
+        alpha: false,
         backgroundIncluded: false,
         backgroundIndex: 0
       };
@@ -57,11 +58,9 @@ export class PixelBuffer {
   // TODO change to static
   from(data: string) {
     // TODO: validate data (the passed in string)
-    // console.log(data);
 
     // read header
     const header = readHeader(data);
-    // console.log('header', header);
     if (header == null) return;
     this.header = header;
 
@@ -167,9 +166,7 @@ export class PixelBuffer {
 
   toPixel2DArr(): PixelColor[][] {
     const pixels: PixelColor[][] = [];
-    // console.log('palette', this.palette);
 
-    // console.log(this.header);
     for (let y = 0; y < this.header.height; y++) {
       const row: PixelColor[] = [];
       for (let x = 0; x < this.header.width; x++) {
@@ -230,17 +227,20 @@ function generatePalette(palette: PixelColor[]): Buffer {
   let s = '';
 
   palette.map((color) => {
+    const c = color.replace('#', '');
     if (isRGBA(color)) {
       // TODO handle RGBA
-      // s += getDataHexString(
-      //   `#${color.r.toString(16).padStart(2, '0')}${color.g
-      //     .toString(16)
-      //     .padStart(2, '0')}${color.b.toString(16).padStart(2, '0')}${
-      //     color.a ? color.a.toString(16).padStart(2, '0') : '00'
-      //   }`
-      // );
-    } else if (isString(color)) {
-      s += getDataHexString(color);
+      // s += `#${color.r.toString(16).padStart(2, '0')}${color.g
+      //   .toString(16)
+      //   .padStart(2, '0')}${color.b.toString(16).padStart(2, '0')}`;
+    } else if (isString(c)) {
+      if (c.length == 3 || c.length == 4) {
+        for (let char of c) {
+          s += `${char}${char}`;
+        }
+      } else {
+        s += c;
+      }
     }
   });
 
@@ -257,17 +257,31 @@ const readPalette = (
   const buffer = Buffer.from(d, 'hex');
 
   const palette: PixelColor[] = [];
-
   for (let i = 0; i < header.numColors; i++) {
-    palette.push(
-      `#${buffer
-        .readUInt32LE(i * 8)
+    if (header.alpha) {
+      palette.push(
+        buffer
+          .readUInt32BE(i * 4)
+          .toString(16)
+          .padStart(8, '0')
+      );
+    } else {
+      const r = buffer
+        .readUInt8(i * 3)
         .toString(16)
-        .padStart(8, '0')}`
-    );
-  }
+        .padStart(2, '0');
+      const g = buffer
+        .readUInt8(i * 3 + 1)
+        .toString(16)
+        .padStart(2, '0');
+      const b = buffer
+        .readUInt8(i * 3 + 2)
+        .toString(16)
+        .padStart(2, '0');
 
-  // console.log('read palette', palette);
+      palette.push(`#${r}${g}${b}`);
+    }
+  }
 
   return palette;
 };
@@ -276,31 +290,29 @@ const readHeader = (data: string): ExquisiteBitmapHeader | null => {
   const rawData = data.replace('0x', '');
 
   if (rawData.length < 16) {
-    // console.log('data does not include header');
     return null;
   }
 
   const headerData = Buffer.from(rawData.substring(0, 16), 'hex');
-  // console.log(headerData);
 
   const version = headerData.readUInt8();
   const width = headerData.readUInt8(1);
   const height = headerData.readUInt8(2);
   const numColors = headerData.readUInt16BE(3);
   const backgroundIndex = headerData.readUInt8(5);
-  const paletteIncluded = ((headerData.readUInt8(7) >> 1) & 0x01) == 1;
+  const scaleFactor = headerData.readUInt16BE(6) >> 6;
+  const alpha = ((headerData.readUInt8(7) >> 1) & 0x01) == 1;
   const backgroundIncluded = (headerData.readUInt8(7) & 0x01) == 1;
-
-  // console.log(version);
 
   const header: ExquisiteBitmapHeader = {
     version,
     width,
     height,
     numColors,
+    scaleFactor,
+    alpha,
     backgroundIncluded,
-    backgroundIndex,
-    paletteIncluded
+    backgroundIndex
   };
 
   return header;
@@ -308,16 +320,20 @@ const readHeader = (data: string): ExquisiteBitmapHeader | null => {
 
 const generateHeader = (header: ExquisiteBitmapHeader): Buffer => {
   let headerData = '';
-  let lastByte = 0;
+  let last2Bytes = 0;
 
   if (header) {
     // TODO, use get bit and set bit to do this.
-    if (header.paletteIncluded && header.paletteIncluded == true) {
-      lastByte |= 1 << 1;
+    if (header.alpha && header.alpha == true) {
+      last2Bytes |= 1 << 1;
     }
 
     if (header.backgroundIncluded && header.backgroundIncluded == true) {
-      lastByte |= 1;
+      last2Bytes |= 1;
+    }
+
+    if (header.scaleFactor) {
+      last2Bytes |= header.scaleFactor << 6;
     }
   }
 
@@ -332,8 +348,7 @@ const generateHeader = (header: ExquisiteBitmapHeader): Buffer => {
     headerData += '00';
   }
 
-  headerData += '000'; // reserved
-  headerData += lastByte;
+  headerData += last2Bytes.toString(16).padStart(4, '0');
 
   return Buffer.from(headerData, 'hex');
 };

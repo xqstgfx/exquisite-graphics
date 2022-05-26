@@ -9,12 +9,9 @@ export const renderSVG = (data: string) => {
   buffer.from(data);
   const pixels = buffer.toPixel2DArr();
 
-  // console.log('PIXELS', pixels);
-
   for (let y = 0; y < pixels.length; y++) {
     for (let x = 0; x < pixels[y].length; x++) {
       const pixel = pixels[y][x];
-      // console.log(`${x},${y} ${pixel}`);
     }
   }
 };
