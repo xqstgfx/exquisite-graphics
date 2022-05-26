@@ -86,8 +86,8 @@ library XQSTHelpers {
   function _toColor(bytes3 b) internal pure returns (bytes8) {
     uint64 b6 = 0x0000000000006666;
     for (uint256 i = 0; i < 3; i++) {
-      b6 |= (uint64(_getHexChar(b[i] >> 4)) << uint64((6 - (i * 2) + 1) * 8));
       b6 |= (uint64(_getHexChar(b[i] & 0x0F)) << uint64((6 - (i * 2)) * 8));
+      b6 |= (uint64(_getHexChar(b[i] >> 4)) << uint64((6 - (i * 2) + 1) * 8));
     }
 
     return bytes8(b6);
@@ -98,11 +98,12 @@ library XQSTHelpers {
   /// @return bytes8 the color in RBGA hex format
   function _toHexBytes8(bytes4 b) internal pure returns (bytes8) {
     uint64 b8;
+
     for (uint256 i = 0; i < 4; i++) {
-      b8 = b8 | (uint64(_getHexChar(b[i] >> 4)) << uint64((6 - (i * 2)) * 8));
+      b8 = b8 | (uint64(_getHexChar(b[i] & 0x0F)) << uint64((6 - (i * 2)) * 8));
       b8 =
         b8 |
-        (uint64(_getHexChar(b[i + 1] & 0x0F)) << uint64((6 - (i * 2) + 1) * 8));
+        (uint64(_getHexChar(b[i] >> 4)) << uint64((6 - (i * 2) + 1) * 8));
     }
 
     return bytes8(b8);
