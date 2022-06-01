@@ -6,6 +6,6 @@ typechain
 
 dist
 
-test/svg
+test/images
 
 .env*
