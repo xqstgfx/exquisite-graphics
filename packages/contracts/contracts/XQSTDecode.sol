@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import 'hardhat/console.sol';
 import './interfaces/IGraphics.sol';
 import {XQSTHelpers as helpers} from './XQSTHelpers.sol';
 
 library XQSTDecode {
-  // TODO it would be good to add a ASCII representation of the header format here.
   /// Decode the header from raw binary data into a Header struct
   /// @param data Binary data in the .xqst format.
   /// @return header the header decoded from the data
@@ -57,7 +55,6 @@ library XQSTDecode {
     returns (string[] memory palette)
   {
     if (header.numColors > 0) {
-      // TODO unify NotEnoughData with ExpectedMoreData
       if (data.length < header.dataStart) revert IGraphics.NotEnoughData();
 
       // the first 32 bytes of `data` represents `data.length` using assembly.
@@ -109,9 +106,6 @@ library XQSTDecode {
     pure
     returns (uint8[] memory table)
   {
-    // TODO it might be worth testing if we can get the bytes8[] for each pixel directly.
-    // ^ first attempt at this didnt look great, mostly bytes8 is a pain to work with
-    // uint256 startGas = gasleft();
     uint8 workingByte;
     table = new uint8[](header.totalPixels + 8); // add extra byte for safety
     if (header.bitsPerPixel == 1) {
@@ -145,8 +139,6 @@ library XQSTDecode {
         table[i] = uint8(data[i + header.dataStart]);
       }
     }
-
-    // console.log('color lut builing gas used', startGas - gasleft());
   }
 
   /// Set the color depth of the image in the header provided

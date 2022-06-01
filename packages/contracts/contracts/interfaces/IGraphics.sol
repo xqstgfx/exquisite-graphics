@@ -24,7 +24,7 @@ interface IGraphics {
     /* CALCULATED DATA END */
   }
 
-  error ExceededMaxPixels(); // TODO: change to: MaxPixelsOutOfRange? Or generic OutOfRange?
+  error ExceededMaxPixels();
   error ExceededMaxRows();
   error ExceededMaxColumns();
   error ExceededMaxColors();
@@ -38,7 +38,6 @@ interface IGraphics {
   /// @return string the <svg>
   function draw(bytes memory data) external view returns (string memory);
 
-  // TODO remove this? Not sure if any non validated path will render? I guess background stuff?
   /// @notice Draw an SVG from the provided data. No validation.
   /// @param data Binary data in the .xqst format.
   /// @return string the <svg>

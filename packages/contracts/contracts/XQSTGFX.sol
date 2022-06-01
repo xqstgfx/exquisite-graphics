@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import 'hardhat/console.sol';
 import './interfaces/IGraphics.sol';
 import './interfaces/IRenderContext.sol';
 import {XQSTHelpers as helpers} from './XQSTHelpers.sol';
@@ -52,29 +51,16 @@ contract XQSTGFX is IGraphics, IRenderContext {
   /// @notice validates if the given data is a valid .xqst file
   /// @param data Binary data in the .xqst format.
   /// @return bool true if the data is valid
-  function valid(bytes memory data) public view returns (bool) {
+  function validate(bytes memory data) public view returns (bool) {
     return v._validate(data);
   }
 
-  // TODO rename this. validate makes more sense to me.
-  // basically use this to check if something is even XQST Graphics Compatible
+  // Check if the header of some data is an XQST Graphics Compatible file
   /// @notice validates the header for some data is a valid .xqst header
   /// @param data Binary data in the .xqst format.
   /// @return bool true if the header is valid
-  function validHeader(bytes memory data) public view returns (bool) {
+  function validateHeader(bytes memory data) public view returns (bool) {
     return v._validateHeader(decode._decodeHeader(data));
-  }
-
-  // TODO is this really necessary to be public?
-  //      does decode, decodeHeader, decodePalette, decodeData, all belong
-  //      in a xqstgfx utils library/contract?
-  //      I would want to also provide the splice options there. Replace palette/Replace Data - to do the blitmap thing.
-  function decodeData(bytes memory data)
-    public
-    view
-    returns (Context memory ctx)
-  {
-    _init(ctx, data, true);
   }
 
   /// @notice Decodes the header from a binary .xqst blob
@@ -93,6 +79,17 @@ contract XQSTGFX is IGraphics, IRenderContext {
     returns (string[] memory)
   {
     return decode._decodePalette(data, decode._decodeHeader(data));
+  }
+
+  /// @notice Decodes all of the data needed to draw an SVG from the .xqst file
+  /// @param data Binary data in the .xqst format.
+  /// @return ctx The Render Context containing all of the decoded data
+  function decodeData(bytes memory data)
+    public
+    view
+    returns (Context memory ctx)
+  {
+    _init(ctx, data, true);
   }
 
   /// Initializes the Render Context from the given data
@@ -124,16 +121,12 @@ contract XQSTGFX is IGraphics, IRenderContext {
     DrawType t,
     bool safe
   ) private view returns (string memory) {
-    uint256 startGas = gasleft();
     Context memory ctx;
     bytes memory buffer = DynamicBuffer.allocate(2**18);
 
     _init(ctx, data, safe);
 
     t == DrawType.RECTS ? _writeSVGRects(ctx, buffer) : _writeSVG(ctx, buffer);
-
-    console.log('Gas Used Result', startGas - gasleft());
-    console.log('Gas Left Result', gasleft());
 
     return string(buffer);
   }

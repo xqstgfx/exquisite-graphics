@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import 'hardhat/console.sol';
 import './interfaces/IGraphics.sol';
 import './interfaces/IRenderContext.sol';
 import {XQSTHelpers as helpers} from './XQSTHelpers.sol';
@@ -9,9 +8,9 @@ import {XQSTDecode as decode} from './XQSTDecode.sol';
 
 library XQSTValidate {
   uint32 public constant MAX_COLORS = 256;
-  uint32 public constant MAX_PIXELS = 4096; // TODO
-  uint32 public constant MAX_ROWS = 256; // TODO
-  uint32 public constant MAX_COLS = 256; // TODO
+  uint32 public constant MAX_PIXELS = 4096;
+  uint32 public constant MAX_ROWS = 256;
+  uint32 public constant MAX_COLS = 256;
 
   /// @notice validates if the given data is a valid .xqst file
   /// @param data Binary data in the .xqst format.
