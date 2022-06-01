@@ -673,7 +673,7 @@ describe('Renderer', () => {
     it(`Should be able to render in 2-256 Colors`, async function () {
       const WIDTH = 16;
       const HEIGHT = 16;
-      for (let i = 25; i <= 256; i++) {
+      for (let i = 2; i <= 256; i++) {
         console.log('Rendering ' + i + ' Colors');
         const NUM_COLORS = i;
 
@@ -685,7 +685,7 @@ describe('Renderer', () => {
           NUM_COLORS
         );
       }
-    });
+    }).timeout(1000000);
 
     it(`Should be able to render RGB`, async function () {
       const WIDTH = 16;
@@ -723,7 +723,7 @@ describe('Renderer', () => {
       );
     });
 
-    it.only('Should fail to render an image with an RGB palette specified, but alpha in header', async () => {
+    it('Should fail to render an image with an RGB palette specified, but alpha in header', async () => {
       const WIDTH = 16;
       const HEIGHT = 16;
       const NUM_COLORS = 256;

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
+import './IRenderContext.sol';
+
 interface IGraphics {
   struct Header {
     /* HEADER START */
@@ -36,23 +38,58 @@ interface IGraphics {
   /// @notice Draw an SVG from the provided data
   /// @param data Binary data in the .xqst format.
   /// @return string the <svg>
-  function draw(bytes memory data) external view returns (string memory);
+  function draw(bytes memory data) external pure returns (string memory);
 
   /// @notice Draw an SVG from the provided data. No validation.
   /// @param data Binary data in the .xqst format.
   /// @return string the <svg>
-  function drawUnsafe(bytes memory data) external view returns (string memory);
+  function drawUnsafe(bytes memory data) external pure returns (string memory);
 
   /// @notice Draw the <rect> elements of an SVG from the data
   /// @param data Binary data in the .xqst format.
   /// @return string the <rect> elements
-  function drawRects(bytes memory data) external view returns (string memory);
+  function drawRects(bytes memory data) external pure returns (string memory);
 
   /// @notice Draw the <rect> elements of an SVG from the data. No validation
   /// @param data Binary data in the .xqst format.
   /// @return string the <rect> elements
   function drawRectsUnsafe(bytes memory data)
     external
-    view
+    pure
     returns (string memory);
+
+  /// @notice validates if the given data is a valid .xqst file
+  /// @param data Binary data in the .xqst format.
+  /// @return bool true if the data is valid
+  function validate(bytes memory data) external pure returns (bool);
+
+  // Check if the header of some data is an XQST Graphics Compatible file
+  /// @notice validates the header for some data is a valid .xqst header
+  /// @param data Binary data in the .xqst format.
+  /// @return bool true if the header is valid
+  function validateHeader(bytes memory data) external pure returns (bool);
+
+  /// @notice Decodes the header from a binary .xqst blob
+  /// @param data Binary data in the .xqst format.
+  /// @return Header the decoded header
+  function decodeHeader(bytes memory data)
+    external
+    pure
+    returns (Header memory);
+
+  /// @notice Decodes the palette from a binary .xqst blob
+  /// @param data Binary data in the .xqst format.
+  /// @return bytes8[] the decoded palette
+  function decodePalette(bytes memory data)
+    external
+    pure
+    returns (string[] memory);
+
+  /// @notice Decodes all of the data needed to draw an SVG from the .xqst file
+  /// @param data Binary data in the .xqst format.
+  /// @return ctx The Render Context containing all of the decoded data
+  function decodeData(bytes memory data)
+    external
+    pure
+    returns (IRenderContext.Context memory ctx);
 }

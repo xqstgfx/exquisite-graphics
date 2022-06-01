@@ -10,7 +10,7 @@ library XQSTDecode {
   /// @return header the header decoded from the data
   function _decodeHeader(bytes memory data)
     internal
-    view
+    pure
     returns (IGraphics.Header memory header)
   {
     if (data.length < 8) revert IGraphics.MissingHeader();

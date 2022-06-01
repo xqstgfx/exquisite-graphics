@@ -15,7 +15,7 @@ library XQSTValidate {
   /// @notice validates if the given data is a valid .xqst file
   /// @param data Binary data in the .xqst format.
   /// @return bool true if the data is valid
-  function _validate(bytes memory data) internal view returns (bool) {
+  function _validate(bytes memory data) internal pure returns (bool) {
     IRenderContext.Context memory ctx;
 
     ctx.header = decode._decodeHeader(data);
@@ -31,7 +31,7 @@ library XQSTValidate {
   /// @return bool true if the header is valid
   function _validateHeader(IGraphics.Header memory header)
     internal
-    view
+    pure
     returns (bool)
   {
     if (uint32(header.width) * uint32(header.height) > MAX_PIXELS)
@@ -56,7 +56,7 @@ library XQSTValidate {
   function _validateDataLength(
     IGraphics.Header memory header,
     bytes memory data
-  ) internal view returns (bool) {
+  ) internal pure returns (bool) {
     uint256 pixelDataLen = (header.totalPixels % 2 == 0) ||
       header.pixelsPerByte == 1
       ? (header.totalPixels / header.pixelsPerByte)
