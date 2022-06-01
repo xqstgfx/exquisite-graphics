@@ -29,7 +29,7 @@
     "@types/node": "^16.4.2",
     "@types/sharp": "^0.29.4",
     "chai": "^4.3.4",
-    "chroma-js": "^2.1.2",
+    "chroma-js": "^2.4.2",
     "dotenv": "^10.0.0",
     "ethereum-waffle": "^3.0.0",
     "ethers": "^5.0.0",

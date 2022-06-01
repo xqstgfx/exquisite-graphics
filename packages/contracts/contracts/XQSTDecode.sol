@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-// import 'hardhat/console.sol';
+import 'hardhat/console.sol';
 import './interfaces/IGraphics.sol';
 import {XQSTHelpers as helpers} from './XQSTHelpers.sol';
 
@@ -12,7 +12,7 @@ library XQSTDecode {
   /// @return header the header decoded from the data
   function _decodeHeader(bytes memory data)
     internal
-    pure
+    view
     returns (IGraphics.Header memory header)
   {
     if (data.length < 8) revert IGraphics.MissingHeader();
@@ -28,16 +28,21 @@ library XQSTDecode {
     header.height = uint16((h >> 40) & 0xFF);
     header.numColors = uint16(h >> 24);
     header.backgroundColorIndex = uint8(h >> 16);
-    header.scale = uint16((h >> 6) & 0x3F);
+    header.scale = uint16((h >> 6) & 0x3FF);
     header.reserved = uint8((h >> 2) & 0x0F);
     header.alpha = ((h >> 1) & 0x1) == 1 ? true : false;
     header.hasBackground = (h & 0x1) == 1 ? true : false;
 
-    header.totalPixels = header.width * header.height;
     header.paletteStart = 8;
     header.dataStart = header.alpha
       ? (header.numColors * 4) + 8
       : (header.numColors * 3) + 8;
+
+    // if the height or width is '0' this really represents 256
+    if (header.height == 0) header.height = 256;
+    if (header.width == 0) header.width = 256;
+
+    header.totalPixels = uint24(header.width) * uint24(header.height);
 
     _setColorDepthParams(header);
   }
@@ -49,26 +54,28 @@ library XQSTDecode {
   function _decodePalette(bytes memory data, IGraphics.Header memory header)
     internal
     pure
-    returns (bytes8[] memory palette)
+    returns (string[] memory palette)
   {
     if (header.numColors > 0) {
+      // TODO unify NotEnoughData with ExpectedMoreData
       if (data.length < header.dataStart) revert IGraphics.NotEnoughData();
 
       // the first 32 bytes of `data` represents `data.length` using assembly.
-      // we offset 32 bytes to get to the actual data
+      // we offset 32 bytes to read the actual data
       uint256 offset = 32 + header.paletteStart;
+
+      palette = new string[](header.numColors);
 
       if (header.alpha) {
         // read 4 bytes at a time if alpha
         bytes4 d;
-        palette = new bytes8[](header.numColors);
         for (uint256 i = 0; i < header.numColors; i++) {
-          // load 4 bytes of data at the offset into d
+          // load 4 bytes of data at offset into d
           assembly {
             d := mload(add(data, offset))
           }
 
-          palette[i] = helpers._toHexBytes8(d); // TODO might be good to give this consistent naming as below.
+          palette[i] = helpers._uint32ToColor(uint32(d));
           unchecked {
             offset += 4;
           }
@@ -76,22 +83,20 @@ library XQSTDecode {
       } else {
         // read 3 bytes at a time if no alpha
         bytes3 d;
-        palette = new bytes8[](header.numColors);
         for (uint256 i = 0; i < header.numColors; i++) {
-          // load 3 bytes of data at the offset into d
+          // load 3 bytes of data at offset into d
           assembly {
             d := mload(add(data, offset))
           }
 
-          palette[i] = helpers._toColor(d);
+          palette[i] = helpers._uint24ToColor(uint24(d));
           unchecked {
             offset += 3;
           }
         }
       }
     } else {
-      palette = new bytes8[](2);
-      palette[1] = bytes8('');
+      palette = new string[](2);
     }
   }
 
@@ -109,7 +114,7 @@ library XQSTDecode {
     // uint256 startGas = gasleft();
     uint8 workingByte;
     table = new uint8[](header.totalPixels + 8); // add extra byte for safety
-    if (header.bpp == 1) {
+    if (header.bitsPerPixel == 1) {
       for (uint256 i = 0; i < header.totalPixels; i += 8) {
         workingByte = uint8(data[i / 8 + header.dataStart]);
         table[i] = workingByte >> 7;
@@ -121,7 +126,7 @@ library XQSTDecode {
         table[i + 6] = (workingByte >> 1) & 0x01;
         table[i + 7] = workingByte & 0x01;
       }
-    } else if (header.bpp == 2) {
+    } else if (header.bitsPerPixel == 2) {
       for (uint256 i = 0; i < header.totalPixels; i += 4) {
         workingByte = uint8(data[i / 4 + header.dataStart]);
         table[i] = workingByte >> 6;
@@ -129,7 +134,7 @@ library XQSTDecode {
         table[i + 2] = (workingByte >> 2) & 0x03;
         table[i + 3] = workingByte & 0x03;
       }
-    } else if (header.bpp == 4) {
+    } else if (header.bitsPerPixel == 4) {
       for (uint256 i = 0; i < header.totalPixels; i += 2) {
         workingByte = uint8(data[i / 2 + header.dataStart]);
         table[i] = workingByte >> 4;
@@ -149,20 +154,20 @@ library XQSTDecode {
   function _setColorDepthParams(IGraphics.Header memory header) internal pure {
     if (header.numColors > 16) {
       // 8 bit Color Depth: images with 16 < numColors <= 256
-      header.bpp = 8;
-      header.ppb = 1;
+      header.bitsPerPixel = 8;
+      header.pixelsPerByte = 1;
     } else if (header.numColors > 4) {
       // 4 bit Color Depth: images with 4 < numColors <= 16
-      header.bpp = 4;
-      header.ppb = 2;
+      header.bitsPerPixel = 4;
+      header.pixelsPerByte = 2;
     } else if (header.numColors > 2) {
       // 2 bit Color Depth: images with 2 < numColors <= 4
-      header.bpp = 2;
-      header.ppb = 4;
+      header.bitsPerPixel = 2;
+      header.pixelsPerByte = 4;
     } else {
       // 1 bit Color Depth: images with 0 <= numColors <= 2
-      header.bpp = 1;
-      header.ppb = 8;
+      header.bitsPerPixel = 1;
+      header.pixelsPerByte = 8;
     }
   }
 }

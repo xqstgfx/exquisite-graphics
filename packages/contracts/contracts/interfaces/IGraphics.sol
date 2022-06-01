@@ -16,9 +16,9 @@ interface IGraphics {
     /* HEADER END */
 
     /* CALCULATED DATA START */
-    uint16 totalPixels; // total pixels in the image
-    uint8 bpp; // bits per pixel
-    uint8 ppb; // pixels per byte
+    uint24 totalPixels; // total pixels in the image
+    uint8 bitsPerPixel; // bits per pixel
+    uint8 pixelsPerByte; // pixels per byte
     uint16 paletteStart; // number of the byte where the palette starts
     uint16 dataStart; // number of the byte where the data starts
     /* CALCULATED DATA END */
@@ -36,23 +36,24 @@ interface IGraphics {
   /// @notice Draw an SVG from the provided data
   /// @param data Binary data in the .xqst format.
   /// @return string the <svg>
-  function draw(bytes memory data) external pure returns (string memory);
+  function draw(bytes memory data) external view returns (string memory);
 
-  /// @notice Draw an SVG from the provided data. No validation
+  // TODO remove this? Not sure if any non validated path will render? I guess background stuff?
+  /// @notice Draw an SVG from the provided data. No validation.
   /// @param data Binary data in the .xqst format.
   /// @return string the <svg>
-  function drawUnsafe(bytes memory data) external pure returns (string memory);
+  function drawUnsafe(bytes memory data) external view returns (string memory);
 
   /// @notice Draw the <rect> elements of an SVG from the data
   /// @param data Binary data in the .xqst format.
   /// @return string the <rect> elements
-  function drawRects(bytes memory data) external pure returns (string memory);
+  function drawRects(bytes memory data) external view returns (string memory);
 
   /// @notice Draw the <rect> elements of an SVG from the data. No validation
   /// @param data Binary data in the .xqst format.
   /// @return string the <rect> elements
   function drawRectsUnsafe(bytes memory data)
     external
-    pure
+    view
     returns (string memory);
 }

@@ -37,12 +37,10 @@ library XQSTHelpers {
     pure
     returns (bool)
   {
-    //      (note: maybe this is better as an error? not sure.
-    //       it's a nice way of adding transparency to the image)
     return ((ctx.header.hasBackground &&
       colorIndex == ctx.header.backgroundColorIndex) ||
       (ctx.header.numColors == 0 && colorIndex == 0) ||
-      colorIndex >= ctx.header.numColors);
+      (ctx.header.numColors > 0 && colorIndex >= ctx.header.numColors));
   }
 
   /// Returns the bytes representation of a number
@@ -70,42 +68,37 @@ library XQSTHelpers {
     return buffer;
   }
 
-  /// Gets the ascii hex character for a byte
-  /// @param char the byte to get the ascii hex character for
-  /// @return uint8 ascii hex character for the byte
-  function _getHexChar(bytes1 char) internal pure returns (uint8) {
+  /// Gets the ascii hex character for a uint8 (byte)
+  /// @param char the uint8 to get the ascii hex character for
+  /// @return bytes1 ascii hex character for the given uint8
+  function _getHexChar(uint8 char) internal pure returns (bytes1) {
     return
-      (uint8(char) > 9)
-        ? (uint8(char) + 87) // ascii a-f
-        : (uint8(char) + 48); // ascii 0-9
+      (char > 9)
+        ? bytes1(char + 87) // ascii a-f
+        : bytes1(char + 48); // ascii 0-9
   }
 
-  /// Converts 3 bytes to a RGBA hex string
-  /// @param b the bytes to convert to a color
+  /// Converts 4 bytes (uint32) to a RGBA hex string
+  /// @param u the uint32 to convert to a color
   /// @return bytes8 the color in RBGA hex format
-  function _toColor(bytes3 b) internal pure returns (bytes8) {
-    uint64 b6 = 0x0000000000006666;
-    for (uint256 i = 0; i < 3; i++) {
-      b6 |= (uint64(_getHexChar(b[i] & 0x0F)) << uint64((6 - (i * 2)) * 8));
-      b6 |= (uint64(_getHexChar(b[i] >> 4)) << uint64((6 - (i * 2) + 1) * 8));
+  function _uint32ToColor(uint32 u) internal pure returns (string memory) {
+    bytes memory b = new bytes(8);
+    for (uint256 j = 0; j < 8; j++) {
+      b[7 - j] = _getHexChar(uint8(uint32(u) & 0x0f));
+      u = u >> 4;
     }
-
-    return bytes8(b6);
+    return string(b);
   }
 
-  /// Converts 4 bytes to a RGBA hex string
-  /// @param b the bytes to convert to a color
-  /// @return bytes8 the color in RBGA hex format
-  function _toHexBytes8(bytes4 b) internal pure returns (bytes8) {
-    uint64 b8;
-
-    for (uint256 i = 0; i < 4; i++) {
-      b8 = b8 | (uint64(_getHexChar(b[i] & 0x0F)) << uint64((6 - (i * 2)) * 8));
-      b8 =
-        b8 |
-        (uint64(_getHexChar(b[i] >> 4)) << uint64((6 - (i * 2) + 1) * 8));
+  /// Converts 3 bytes (uint24) to a RGB hex string
+  /// @param u the uint24 to convert to a color
+  /// @return string the color in RBG hex format
+  function _uint24ToColor(uint24 u) internal pure returns (string memory) {
+    bytes memory b = new bytes(6);
+    for (uint256 j = 0; j < 6; j++) {
+      b[5 - j] = _getHexChar(uint8(uint24(u) & 0x0f));
+      u = u >> 4;
     }
-
-    return bytes8(b8);
+    return string(b);
   }
 }

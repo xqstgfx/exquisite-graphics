@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-// import 'hardhat/console.sol';
+import 'hardhat/console.sol';
 import './interfaces/IGraphics.sol';
 import './interfaces/IRenderContext.sol';
 import {XQSTHelpers as helpers} from './XQSTHelpers.sol';
@@ -20,21 +20,21 @@ contract XQSTGFX is IGraphics, IRenderContext {
   /// @notice Draw an SVG from the provided data
   /// @param data Binary data in the .xqst format.
   /// @return string the <svg>
-  function draw(bytes memory data) public pure returns (string memory) {
+  function draw(bytes memory data) public view returns (string memory) {
     return _draw(data, DrawType.SVG, true);
   }
 
   /// @notice Draw an SVG from the provided data. No validation
   /// @param data Binary data in the .xqst format.
   /// @return string the <svg>
-  function drawUnsafe(bytes memory data) public pure returns (string memory) {
+  function drawUnsafe(bytes memory data) public view returns (string memory) {
     return _draw(data, DrawType.SVG, false);
   }
 
   /// @notice Draw the <rect> elements of an SVG from the data
   /// @param data Binary data in the .xqst format.
   /// @return string the <rect> elements
-  function drawRects(bytes memory data) public pure returns (string memory) {
+  function drawRects(bytes memory data) public view returns (string memory) {
     return _draw(data, DrawType.RECTS, true);
   }
 
@@ -43,7 +43,7 @@ contract XQSTGFX is IGraphics, IRenderContext {
   /// @return string the <rect> elements
   function drawRectsUnsafe(bytes memory data)
     public
-    pure
+    view
     returns (string memory)
   {
     return _draw(data, DrawType.RECTS, false);
@@ -52,15 +52,16 @@ contract XQSTGFX is IGraphics, IRenderContext {
   /// @notice validates if the given data is a valid .xqst file
   /// @param data Binary data in the .xqst format.
   /// @return bool true if the data is valid
-  function valid(bytes memory data) public pure returns (bool) {
+  function valid(bytes memory data) public view returns (bool) {
     return v._validate(data);
   }
 
+  // TODO rename this. validate makes more sense to me.
   // basically use this to check if something is even XQST Graphics Compatible
   /// @notice validates the header for some data is a valid .xqst header
   /// @param data Binary data in the .xqst format.
   /// @return bool true if the header is valid
-  function validHeader(bytes memory data) public pure returns (bool) {
+  function validHeader(bytes memory data) public view returns (bool) {
     return v._validateHeader(decode._decodeHeader(data));
   }
 
@@ -68,18 +69,18 @@ contract XQSTGFX is IGraphics, IRenderContext {
   //      does decode, decodeHeader, decodePalette, decodeData, all belong
   //      in a xqstgfx utils library/contract?
   //      I would want to also provide the splice options there. Replace palette/Replace Data - to do the blitmap thing.
-  // function decodeData(bytes memory data)
-  //   public
-  //   view
-  //   returns (Context memory ctx)
-  // {
-  //   _init(ctx, data, true);
-  // }
+  function decodeData(bytes memory data)
+    public
+    view
+    returns (Context memory ctx)
+  {
+    _init(ctx, data, true);
+  }
 
   /// @notice Decodes the header from a binary .xqst blob
   /// @param data Binary data in the .xqst format.
   /// @return Header the decoded header
-  function decodeHeader(bytes memory data) public pure returns (Header memory) {
+  function decodeHeader(bytes memory data) public view returns (Header memory) {
     return decode._decodeHeader(data);
   }
 
@@ -88,8 +89,8 @@ contract XQSTGFX is IGraphics, IRenderContext {
   /// @return bytes8[] the decoded palette
   function decodePalette(bytes memory data)
     public
-    pure
-    returns (bytes8[] memory)
+    view
+    returns (string[] memory)
   {
     return decode._decodePalette(data, decode._decodeHeader(data));
   }
@@ -102,7 +103,7 @@ contract XQSTGFX is IGraphics, IRenderContext {
     Context memory ctx,
     bytes memory data,
     bool safe
-  ) private pure {
+  ) private view {
     ctx.header = decode._decodeHeader(data);
     if (safe) {
       v._validateHeader(ctx.header);
@@ -122,8 +123,8 @@ contract XQSTGFX is IGraphics, IRenderContext {
     bytes memory data,
     DrawType t,
     bool safe
-  ) private pure returns (string memory) {
-    // uint256 startGas = gasleft();
+  ) private view returns (string memory) {
+    uint256 startGas = gasleft();
     Context memory ctx;
     bytes memory buffer = DynamicBuffer.allocate(2**18);
 
@@ -131,8 +132,8 @@ contract XQSTGFX is IGraphics, IRenderContext {
 
     t == DrawType.RECTS ? _writeSVGRects(ctx, buffer) : _writeSVG(ctx, buffer);
 
-    // console.log('Gas Used Result', startGas - gasleft());
-    // console.log('Gas Left Result', gasleft());
+    console.log('Gas Used Result', startGas - gasleft());
+    console.log('Gas Left Result', gasleft());
 
     return string(buffer);
   }
@@ -140,12 +141,9 @@ contract XQSTGFX is IGraphics, IRenderContext {
   /// Writes the entire SVG to the given buffer
   /// @param ctx The Render Context
   /// @param buffer The buffer to write the SVG to
-  function _writeSVG(Context memory ctx, bytes memory buffer) private pure {
+  function _writeSVG(Context memory ctx, bytes memory buffer) private view {
     _writeSVGHeader(ctx, buffer);
-
-    if (ctx.header.numColors == 0 || ctx.header.numColors > 1)
-      _writeSVGRects(ctx, buffer);
-
+    _writeSVGRects(ctx, buffer);
     buffer.appendSafe('</svg>');
   }
 
@@ -154,7 +152,7 @@ contract XQSTGFX is IGraphics, IRenderContext {
   /// @param buffer The buffer to write the SVG header to
   function _writeSVGHeader(Context memory ctx, bytes memory buffer)
     internal
-    pure
+    view
   {
     uint256 scale = uint256(ctx.header.scale);
     // default scale to >=512px.
@@ -182,6 +180,18 @@ contract XQSTGFX is IGraphics, IRenderContext {
         '">'
       )
     );
+  }
+
+  /// Writes the SVG <rect> elements to the given buffer
+  /// @param ctx The Render Context
+  /// @param buffer The buffer to write the SVG <rect> elements to
+  function _writeSVGRects(Context memory ctx, bytes memory buffer)
+    internal
+    view
+  {
+    uint256 colorIndex;
+    uint256 c;
+    uint256 pixelNum;
 
     // create a rect that fills the entirety of the svg as the background
     if (ctx.header.hasBackground) {
@@ -197,18 +207,6 @@ contract XQSTGFX is IGraphics, IRenderContext {
         )
       );
     }
-  }
-
-  /// Writes the SVG <rect> elements to the given buffer
-  /// @param ctx The Render Context
-  /// @param buffer The buffer to write the SVG <rect> elements to
-  function _writeSVGRects(Context memory ctx, bytes memory buffer)
-    internal
-    pure
-  {
-    uint256 colorIndex;
-    uint256 c;
-    uint256 pixelNum;
 
     // Write every pixel into the buffer
     while (pixelNum < ctx.header.totalPixels) {
@@ -228,7 +226,6 @@ contract XQSTGFX is IGraphics, IRenderContext {
         } else break;
       }
 
-      // write rect out to the buffer
       buffer.appendSafe(
         abi.encodePacked(
           '<rect fill="#',

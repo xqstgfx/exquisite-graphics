@@ -299,13 +299,16 @@ const readHeader = (data: string): ExquisiteBitmapHeader | null => {
   const headerData = Buffer.from(rawData.substring(0, 16), 'hex');
 
   const version = headerData.readUInt8();
-  const width = headerData.readUInt8(1);
-  const height = headerData.readUInt8(2);
+  let width = headerData.readUInt8(1);
+  let height = headerData.readUInt8(2);
   const numColors = headerData.readUInt16BE(3);
   const backgroundIndex = headerData.readUInt8(5);
   const scaleFactor = headerData.readUInt16BE(6) >> 6;
   const alpha = ((headerData.readUInt8(7) >> 1) & 0x01) == 1;
   const backgroundIncluded = (headerData.readUInt8(7) & 0x01) == 1;
+
+  if (width == 0) width = 256;
+  if (height == 0) height = 256;
 
   const header: ExquisiteBitmapHeader = {
     version,
@@ -341,8 +344,14 @@ const generateHeader = (header: ExquisiteBitmapHeader): Buffer => {
   }
 
   headerData += `${header.version.toString(16).padStart(2, '0')}`;
-  headerData += `${header.width.toString(16).padStart(2, '0')}`;
-  headerData += `${header.height.toString(16).padStart(2, '0')}`;
+  headerData +=
+    header.width == 256
+      ? '00'
+      : `${header.width.toString(16).padStart(2, '0')}`;
+  headerData +=
+    header.height == 256
+      ? '00'
+      : `${header.height.toString(16).padStart(2, '0')}`;
   headerData += `${header.numColors.toString(16).padStart(4, '0')}`;
 
   if (header && header.backgroundIndex) {
