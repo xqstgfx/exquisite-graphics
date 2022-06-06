@@ -1,7 +1,7 @@
 import fs from 'fs-extra';
 import { JsonRpcProvider } from '@ethersproject/providers';
 import { Wallet } from '@ethersproject/wallet';
-import { XQSTGFX__factory } from '../typechain';
+import { ExquisiteVault__factory } from '../typechain';
 import hre from 'hardhat';
 import 'hardhat-change-network';
 
@@ -28,21 +28,21 @@ async function start() {
 
   hre.changeNetwork(deployNetwork);
 
-  if (!addressBook.render) {
-    console.log('Deploying exquisite graphics...');
-    const deployTx = await new XQSTGFX__factory(wallet).deploy();
+  if (!addressBook.vault) {
+    console.log('Deploying exquisite vault...');
+    const deployTx = await new ExquisiteVault__factory(wallet).deploy();
     console.log('Deploy TX: ', deployTx.deployTransaction.hash);
     await deployTx.deployed();
-    console.log('exquisite graphics deployed at ', deployTx.address);
-    addressBook.render = deployTx.address;
+    console.log('exquisite vault deployed at ', deployTx.address);
+    addressBook.vault = deployTx.address;
     await fs.writeFile(addressesPath, JSON.stringify(addressBook, null, 2));
     console.log('Waiting for more confirmations before verify…');
-    const tx = await deployTx.deployTransaction.wait(10);
+    const tx = await deployTx.deployTransaction.wait(5);
     console.log('Verifying contract...');
   }
 
   await hre.run('verify:verify', {
-    address: addressBook.render,
+    address: addressBook.vault,
     constructorArguments: []
   });
 

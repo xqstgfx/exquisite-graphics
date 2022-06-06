@@ -1,27 +1,26 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import './interfaces/IGraphics.sol';
-import './interfaces/IRenderContext.sol';
+import {IExquisiteGraphics as xqstgfx} from '../interfaces/IExquisiteGraphics.sol';
 
-library XQSTHelpers {
-  /// Gets a table of numbers
+library ExquisiteUtils {
+  /// Gets an array of numbers in string format
   /// @dev index 0 is the string '0' and index 255 is the string '255'
   /// @param header used to figure out how many numbers we need to store
-  /// @return lookup the table of numbers
-  function _getNumberLUT(IGraphics.Header memory header)
+  /// @return numberStrings the array of numbers
+  function _getNumberStrings(xqstgfx.Header memory header)
     internal
     pure
-    returns (bytes[] memory lookup)
+    returns (bytes[] memory numberStrings)
   {
     uint256 max;
 
     max = (header.width > header.height ? header.width : header.height) + 1;
     max = header.numColors > max ? header.numColors : max;
 
-    lookup = new bytes[](max);
+    numberStrings = new bytes[](max);
     for (uint256 i = 0; i < max; i++) {
-      lookup[i] = toBytes(i);
+      numberStrings[i] = toBytes(i);
     }
   }
 
@@ -30,9 +29,9 @@ library XQSTHelpers {
   /// @dev 1. The pixel's color is the same as the background color
   /// @dev 2. We are rendering in 0-color mode, and the pixel is a 0
   /// @dev 3. The pixel's color doesn't exist in the palette
-  /// @param ctx the render context
+  /// @param ctx the draw context
   /// @param colorIndex the index of the color for this pixel
-  function _canSkipPixel(IRenderContext.Context memory ctx, uint256 colorIndex)
+  function _canSkipPixel(xqstgfx.DrawContext memory ctx, uint256 colorIndex)
     internal
     pure
     returns (bool)

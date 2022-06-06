@@ -1,10 +1,12 @@
 import { expect } from 'chai';
-import { ethers } from 'hardhat';
+import { ethers, getProvider } from 'hardhat';
 import fs from 'fs';
 
 import chroma from 'chroma-js';
 
-import { XQSTGFX } from '../typechain';
+import { ExquisiteGraphics, ExquisiteVault } from '../typechain';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+import { parseUnits } from 'ethers/lib/utils';
 
 const SAM =
   '0x0140400010000003bdbdbdffc2c2c2ffc7c7c7ffcdcdcdffd6d6d6ffb4b4b4ffaaaaaaffa0a0a0ff898989ff727272ff4d4d4dff3e3e3eff5e5e5eff2c2c2cff181818ff090909ff00000000000000110111111112111222222222223333333343444444444444440000000000000101111111122112112122222223233333333443444444444444000000000100100101111112221112221222222223233333434444444444444400000000000101011111222221112212222222323233333334343444444444440000000000100111222111111112222222222222333333333434444444444444000000001111110011112221111112222222232223333333333434344444444400000001111110001112222211122222222222222333333334334444444444440000001111110000112222121122222222232233333333333333434444444444000001000001101111122111111222222232233333333333343444432333444400010000011101111112222111111222222233323333333333433432222333440000000001011111111111111121222222222332323333333333343222233334000011000100011111112111111112122211233323333333333333332234444400000000100101111221111111121122222323323323333433333222233444440000010001001111111111111111212222232323233333333343232233344434001000001001010111111111121222222322323333333333333433333333323400000000010000101111111111111122222233323233333333333321122333340000100000010101011111111112122222222233233334333211111233434444000101010100100111111111111112122222232233333333222222333344444400010111010011101111111121121222122223323211123332333233433434440001010111110111111111222222222232222222223222332223333333433434000000010111011101111111212212222222222321222222223333333333434400000000010111100000111111111111222222122222222232332333333333340000000100001000010111111110121111222222101221222232333333344433000001111111000010000001111111121211112211222222222232233320000000000000000100011005500101011111111111111222222223222222005555550000010111101111100550011101111111111111112231001111105566666666000000001111100000050000001000111111112233210000055666777677777750500500000000005550000000000100001120000000556777777777777777775555555500505555655000000000000012215555556776677777777777777777555555555000555665500100000002211105666666776667777777777766776755555555055555566500000000105001005666667776777666677777666666666555555555505555550001220005500111566767677676666676766655000005565556555555555550000500050000011155656555666556666555550055555555566666500005550000500050055000010055505555555555666665555055015566666655505555555050000055500000010055500005655655555500012222555555555555666665555555555555000100000000001000550005000112111155565555556566655655555555550500001000500000011010111111121111116665566655665555897abcb77690000000000010000101011101012232133333666666656655555788b9ba87777c5000005600001001111101111121122212116566666650000097697c988867ac686557000801000112233443322222012100666676766000088c8de887b8996966659500008052212001321100110060010077656766c59899cd5a996686c66c96dc5c98101005555555055555551500055566795c876979e78ba5555569ca658b7a75750556710067650550065105505656967686698dcca7d75556576879a6757755598760970607670555666650500666600566660cacc9988955bc978d977875568167ca9c100575656777777766766600057a9bbbdbca8921b815bb9b7951ccaa8aa115c188aa999676005050966655caaacaabccccbaab8cabaabaabbbca7b8ccb8aac9b9ca89aa0aabcc896bbacccdcca9db95a359cdbdab98899cca99a79acbbbbabb9bb9abbabcc8baaaaaaaabcbdddbdbedc9c999ccccccaaccacaabcacaaab9aac8aaaac8caccccaaccccacccddeadbbbbac9bb99cccabbdcaddcbbba9c9999cca998c9cca9ccc98c9c9899c9bddd9ddabdbdbdbedddcaccaa9a9cddbddeeeabdc8898999899989999ca999899bdbabcababbddbdefadbc9ac9bbcceeeededbccc9998888898899c9999c9999cdcbabdcbbbeabaaddeebbedddbeddbdbbeddbbdabdbddbaedeedcc988888889fc9bbddbabbddaddbddeabbbbdddeeadbadddbddbba9cc9bbbdbaddb999ab99bf9ddabdbedaeedbddbaaaebabbdaffadaaabdddbdeabbbebddefbabbdadedcbdbaebbdfdefedededdbdbeebdfdfdee9cbbebaedbfddcdfedfeffeedefedfedeeeefdfffffffffffeeeeeffefefeffebaefffdeedffefefbfffffffeffffdffffbffefffffffffffffdefeffffeefffeefffeffeeefefdbfffeffdebfdefeedfdefeffffefffffffeeefdeffffffffffeffeffffeefffefdffebffedfdafeedceefffffffffffffffffffefffffefefffffffffffffffeeeffecfeeefbdeeedfdffefffffffffffffffffffffffffffffffffefeffffffefaeeafedeeeeeedbedfffefffffeffffffeffffffffffffffffffffefffffffffabcbffbefdededefeffffffffffffefffffffefffffffffffffffeffffffffffebcbfefeeddfeededefffffffffffffffffffeffffffffffffffffeeffffffffebdbbfeddeeffdede';
@@ -15,28 +17,6 @@ const RAINBOW_SCALE = chroma
   .mode('hsl');
 const CUBEHELIX_SCALE = chroma.cubehelix().gamma(0.6).scale();
 const COLOR_TEST = [1, 2, 4, 8, 16, 256];
-
-function getSVG(
-  colorScale: chroma.Scale<chroma.Color>,
-  nRows: number,
-  nCols: number,
-  nColors: number
-) {
-  let expectedSVG = `<svg xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" version="1.1" viewBox="0 0 ${
-    nCols * 16
-  } ${nRows * 16}"><g transform="scale(16 16)">`;
-  const palette = colorScale.colors(nColors);
-
-  for (let row = 0; row < nRows; row++) {
-    for (let col = 0; col < nCols; col++) {
-      let colorIndex = (row * nCols + col) % nColors;
-      expectedSVG += `<rect fill="${palette[colorIndex]}" x="${col}" y="${row}" height="1" width="1"/>`;
-    }
-  }
-
-  expectedSVG += '</g></svg>';
-  return expectedSVG;
-}
 
 function saveRects(
   data: string,
@@ -113,7 +93,7 @@ function generatePalette(palette: string[], alpha = false) {
 }
 
 async function render(
-  renderer: XQSTGFX,
+  renderer: ExquisiteGraphics,
   suiteName: string,
   numRows: number,
   numCols: number,
@@ -141,8 +121,8 @@ async function render(
     else result = await renderer.draw(data);
   } else {
     // rects
-    if (unsafe) result = await renderer.drawRectsUnsafe(data);
-    else result = await renderer.drawRects(data);
+    if (unsafe) result = await renderer.drawPixelsUnsafe(data);
+    else result = await renderer.drawPixels(data);
   }
 
   if (svg) {
@@ -202,15 +182,22 @@ function generatePixels(nRows: number, nCols: number, nColors: number) {
 }
 
 describe('Renderer', () => {
-  let renderer: XQSTGFX;
+  let vault: ExquisiteVault;
+  let renderer: ExquisiteGraphics;
+  let signers: SignerWithAddress[];
 
   before(async () => {
-    // 1
-    const signers = await ethers.getSigners();
+    signers = await ethers.getSigners();
 
-    // 2
-    const rendererFactory = await ethers.getContractFactory('XQSTGFX');
-    renderer = (await rendererFactory.deploy()) as XQSTGFX;
+    const vaultFactor = await ethers.getContractFactory('ExquisiteVault');
+    vault = (await vaultFactor.deploy()) as ExquisiteVault;
+
+    console.log(vault.address);
+
+    const rendererFactory = await ethers.getContractFactory(
+      'ExquisiteGraphics'
+    );
+    renderer = (await rendererFactory.deploy()) as ExquisiteGraphics;
   });
 
   beforeEach(async () => {});
@@ -536,10 +523,10 @@ describe('Renderer', () => {
       const pixelData = 'a'.repeat((WIDTH * HEIGHT) / 4);
       const data = `0x${header}${pixelData}`;
 
-      const result = await renderer.decodeData(data);
+      const result = await renderer.decodeDrawContext(data);
 
       for (let i = 0; i < WIDTH * HEIGHT; i++) {
-        expect(result.pixelColorLUT[i]).to.be.eql(i % 2 == 0 ? 1 : 0);
+        expect(result.pixels[i]).to.be.eql(i % 2 == 0 ? 1 : 0);
       }
     });
 
@@ -561,10 +548,10 @@ describe('Renderer', () => {
         const pixelData = generatePixels(WIDTH, HEIGHT, numColors);
         const data = `0x${header}${palette}${pixelData.data}`;
 
-        const result = await renderer.decodeData(data);
+        const result = await renderer.decodeDrawContext(data);
 
         for (let i = 0; i < WIDTH * HEIGHT; i++) {
-          expect(result.pixelColorLUT[i]).to.be.eql(pixelData.indices[i]);
+          expect(result.pixels[i]).to.be.eql(pixelData.indices[i]);
         }
       });
     });
@@ -583,7 +570,7 @@ describe('Renderer', () => {
 
       // we should get alternating red and black pixels, the black pixels are not rendered. effectively transparent
       const image = await renderer.draw(data);
-      const rectImage = await renderer.drawRects(data);
+      const rectImage = await renderer.drawPixels(data);
       saveSVG(image, 'COLOR_SWEEP', `${NUM_COLORS}COLORS_${WIDTH}x${HEIGHT}`);
       saveRects(
         rectImage,
@@ -594,19 +581,26 @@ describe('Renderer', () => {
       );
     });
     it(`Should be able to render in 1 Color without Background`, async function () {
-      // 16x16 test pattern, first pixel on second pixel off.
-
       let WIDTH = 16;
       let HEIGHT = 16;
       const NUM_COLORS = 1;
 
-      let header = generatePixelHeader(WIDTH, HEIGHT, NUM_COLORS, 1, 0, 0);
+      let header = generatePixelHeader(
+        WIDTH,
+        HEIGHT,
+        NUM_COLORS,
+        1,
+        0,
+        0,
+        0,
+        0
+      );
       let pixelData = '5'.repeat((WIDTH * HEIGHT) / 4);
       let data = `0x${header}ff0000${pixelData}`;
 
       // we should get alternating red and black pixels, the black pixels are not rendered. effectively transparent
       let image = await renderer.draw(data);
-      let rectImage = await renderer.drawRects(data);
+      let rectImage = await renderer.drawPixels(data);
       saveSVG(image, 'COLOR_SWEEP', `${NUM_COLORS}COLORS_${WIDTH}x${HEIGHT}`);
       saveRects(
         rectImage,
@@ -618,13 +612,13 @@ describe('Renderer', () => {
 
       WIDTH = 5;
       HEIGHT = 7;
-      header = generatePixelHeader(WIDTH, HEIGHT, NUM_COLORS, 1, 0, 0);
-      pixelData = generatePixels(WIDTH, HEIGHT, NUM_COLORS).data;
+      header = generatePixelHeader(WIDTH, HEIGHT, NUM_COLORS, 1, 0, 0, 0, 0);
+      pixelData = '5555555555';
       data = `0x${header}ff0000${pixelData}`;
 
       // we should get alternating red and black pixels, the black pixels are not rendered. effectively transparent
       image = await renderer.draw(data);
-      rectImage = await renderer.drawRects(data);
+      rectImage = await renderer.drawPixels(data);
       saveSVG(image, 'COLOR_SWEEP', `${NUM_COLORS}COLORS_${WIDTH}x${HEIGHT}`);
       saveRects(
         rectImage,
@@ -635,8 +629,7 @@ describe('Renderer', () => {
       );
     });
     it(`Should be able to render in 1 Color with Background`, async function () {
-      // 16x16 test pattern, first pixel on second pixel off.
-
+      // we expect the whole image to be red.
       const WIDTH = 16;
       const HEIGHT = 16;
       const NUM_COLORS = 1;
@@ -654,9 +647,8 @@ describe('Renderer', () => {
       const pixelData = '5'.repeat((WIDTH * HEIGHT) / 4);
       const data = `0x${header}ff0000${pixelData}`;
 
-      // we expect the whole image to be red.
       const image = await renderer.draw(data);
-      const rectImage = await renderer.drawRects(data);
+      const rectImage = await renderer.drawPixels(data);
       saveSVG(
         image,
         'COLOR_SWEEP',
@@ -756,7 +748,7 @@ describe('Renderer', () => {
       const data = generatePixels(WIDTH, HEIGHT, 8).data;
 
       const image = await renderer.draw(`0x${header}${palette}${data}`);
-      const rectImage = await renderer.drawRects(
+      const rectImage = await renderer.drawPixels(
         `0x${header}${palette}${data}`
       );
       saveSVG(
@@ -776,6 +768,7 @@ describe('Renderer', () => {
 
   describe(`Sizes`, function () {
     it(`Should be able to render Square sizes up to 64x64`, async function () {
+      // const SIZES = [64];
       const SIZES = [1, 2, 3, 4, 5, 8, 16, 31, 32, 33, 42, 63, 64];
       const NUM_COLORS = 64;
 
@@ -830,7 +823,7 @@ describe('Renderer', () => {
       await expect(renderer.draw(data)).to.be.revertedWith(
         'ExceededMaxPixels()'
       );
-      await expect(renderer.drawRects(data)).to.be.revertedWith(
+      await expect(renderer.drawPixels(data)).to.be.revertedWith(
         'ExceededMaxPixels()'
       );
     });
@@ -846,17 +839,13 @@ describe('Renderer', () => {
       const data = `0x${header}${palette}${pixelData}`;
 
       const image = await renderer.drawUnsafe(data);
-      const rectImage = await renderer.drawRectsUnsafe(data);
-      saveSVG(
-        image,
-        'RECT_SIZE_SWEEP',
-        `${WIDTH}x${HEIGHT}x${NUM_COLORS}_UNSAFE`
-      );
+      const rectImage = await renderer.drawPixelsUnsafe(data);
+      saveSVG(image, 'MAX', `${WIDTH}x${HEIGHT}x${NUM_COLORS}_UNSAFE`);
       saveRects(
         rectImage,
         WIDTH,
         HEIGHT,
-        'RECT_SIZE_SWEEP',
+        'MAX',
         `${WIDTH}x${HEIGHT}x${NUM_COLORS}_UNSAFE`
       );
     });
@@ -908,7 +897,7 @@ describe('Renderer', () => {
   describe(`Integrations`, function () {
     it(`Should render Sam's Image`, async function () {
       const image = await renderer.draw(SAM);
-      const rectImage = await renderer.drawRects(SAM);
+      const rectImage = await renderer.drawPixels(SAM);
       saveSVG(image, 'INTEGRATIONS', 'SAM');
       saveRects(rectImage, 64, 64, 'INTEGRATIONS', `SAM`);
     }).timeout(1000000);
@@ -920,7 +909,7 @@ describe('Renderer', () => {
 
       // we should get the balance image
       const image = await renderer.draw(data);
-      const rectImage = await renderer.drawRects(data);
+      const rectImage = await renderer.drawPixels(data);
       saveSVG(image, 'INTEGRATIONS', `OKPC`);
       saveRects(rectImage, 24, 16, 'INTEGRATIONS', `OKPC`);
     });
@@ -934,7 +923,7 @@ describe('Renderer', () => {
 
       // we should get the balance image
       const image = await renderer.draw(data);
-      const rectImage = await renderer.drawRects(data);
+      const rectImage = await renderer.drawPixels(data);
       saveSVG(image, 'INTEGRATIONS', `BLITMAP`);
       saveRects(rectImage, 32, 32, 'INTEGRATIONS', `BLITMAP`);
     });
@@ -948,9 +937,54 @@ describe('Renderer', () => {
 
       // we should get the balance image
       const image = await renderer.draw(data);
-      const rectImage = await renderer.drawRects(data);
+      const rectImage = await renderer.drawPixels(data);
       saveSVG(image, 'INTEGRATIONS', `BLITMAP_OKPC`);
       saveRects(rectImage, 32, 32, 'INTEGRATIONS', `BLITMAP_OKPC`);
+    });
+  });
+
+  describe('Thank You', function () {
+    it(`Vault should recieve Thank You ETH + Message when sent to Exquisite Graphics`, async function () {
+      const signer = signers[0];
+      await renderer
+        .connect(signer)
+        ['ty(string)']('Thank you', { value: parseUnits('0.05', 'ether') });
+      expect(await vault.balance()).to.equal(parseUnits('0.05', 'ether'));
+    });
+
+    it(`Vault should recieve Thank You ETH when sent to Exquisite Graphics`, async function () {
+      const signer = signers[0];
+      await renderer
+        .connect(signer)
+        ['ty()']({ value: parseUnits('0.05', 'ether') });
+      expect(await vault.balance()).to.equal(parseUnits('0.1', 'ether'));
+    });
+
+    it(`Vault should recieve ETH directly when sent to Exquisite Graphics`, async function () {
+      const signer = signers[0];
+      await signer.sendTransaction({
+        to: renderer.address,
+        value: parseUnits('0.1', 'ether')
+      });
+      expect(await vault.balance()).to.equal(parseUnits('0.2', 'ether'));
+    });
+
+    it('Vault should be able to widthdraw ETH', async function () {
+      const signer = signers[0];
+      await vault.connect(signer).withdraw();
+      expect(
+        await ethers.provider.getBalance(
+          '0xd286064cc27514b914bab0f2fad2e1a89a91f314'
+        )
+      ).to.equal(parseUnits('0.2', 'ether'));
+      expect(await vault.balance()).to.eq(parseUnits('0', 'ether'));
+    });
+
+    it('Vault cant widthdraw 0 ETH', async function () {
+      const signer = signers[0];
+      await expect(vault.connect(signer).withdraw()).to.be.revertedWith(
+        'NoBalance()'
+      );
     });
   });
 });

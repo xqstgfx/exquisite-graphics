@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import './interfaces/IGraphics.sol';
-import {XQSTHelpers as helpers} from './XQSTHelpers.sol';
+import {IExquisiteGraphics as xqstgfx} from '../interfaces/IExquisiteGraphics.sol';
+import {ExquisiteUtils as utils} from './ExquisiteUtils.sol';
 
-library XQSTDecode {
+library ExquisiteDecoder {
   /// Decode the header from raw binary data into a Header struct
   /// @param data Binary data in the .xqst format.
   /// @return header the header decoded from the data
   function _decodeHeader(bytes memory data)
     internal
     pure
-    returns (IGraphics.Header memory header)
+    returns (xqstgfx.Header memory header)
   {
-    if (data.length < 8) revert IGraphics.MissingHeader();
+    if (data.length < 8) revert xqstgfx.MissingHeader();
 
     // Fetch the 8 Bytes representing the header from the data
     uint64 h;
@@ -49,13 +49,13 @@ library XQSTDecode {
   /// @dev Each element of the palette array is a hex color with alpha channel
   /// @param data Binary data in the .xqst format.
   /// @return palette the palette from the data
-  function _decodePalette(bytes memory data, IGraphics.Header memory header)
+  function _decodePalette(bytes memory data, xqstgfx.Header memory header)
     internal
     pure
     returns (string[] memory palette)
   {
     if (header.numColors > 0) {
-      if (data.length < header.dataStart) revert IGraphics.NotEnoughData();
+      if (data.length < header.dataStart) revert xqstgfx.NotEnoughData();
 
       // the first 32 bytes of `data` represents `data.length` using assembly.
       // we offset 32 bytes to read the actual data
@@ -72,7 +72,7 @@ library XQSTDecode {
             d := mload(add(data, offset))
           }
 
-          palette[i] = helpers._uint32ToColor(uint32(d));
+          palette[i] = utils._uint32ToColor(uint32(d));
           unchecked {
             offset += 4;
           }
@@ -86,7 +86,7 @@ library XQSTDecode {
             d := mload(add(data, offset))
           }
 
-          palette[i] = helpers._uint24ToColor(uint24(d));
+          palette[i] = utils._uint24ToColor(uint24(d));
           unchecked {
             offset += 3;
           }
@@ -101,7 +101,7 @@ library XQSTDecode {
   /// @param data Binary data in the .xqst format.
   /// @param header the header of the image
   /// @return table table of color index for each pixel
-  function _getPixelColorLUT(bytes memory data, IGraphics.Header memory header)
+  function _decodePixels(bytes memory data, xqstgfx.Header memory header)
     internal
     pure
     returns (uint8[] memory table)
@@ -143,7 +143,7 @@ library XQSTDecode {
 
   /// Set the color depth of the image in the header provided
   /// @param header the header of the image
-  function _setColorDepthParams(IGraphics.Header memory header) internal pure {
+  function _setColorDepthParams(xqstgfx.Header memory header) internal pure {
     if (header.numColors > 16) {
       // 8 bit Color Depth: images with 16 < numColors <= 256
       header.bitsPerPixel = 8;

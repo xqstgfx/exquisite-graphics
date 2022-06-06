@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import './IRenderContext.sol';
+import {IThankYou} from './IThankYou.sol';
 
-interface IGraphics {
+interface IExquisiteGraphics is IThankYou {
   struct Header {
     /* HEADER START */
     uint8 version; // 8 bits
@@ -24,6 +24,13 @@ interface IGraphics {
     uint16 paletteStart; // number of the byte where the palette starts
     uint16 dataStart; // number of the byte where the data starts
     /* CALCULATED DATA END */
+  }
+
+  struct DrawContext {
+    bytes data; // the binary data in .xqst format
+    Header header; // the header of the data
+    string[] palette; // hex color for each color in the image
+    uint8[] pixels; // color index (in the palette) for a pixel
   }
 
   error ExceededMaxPixels();
@@ -48,12 +55,12 @@ interface IGraphics {
   /// @notice Draw the <rect> elements of an SVG from the data
   /// @param data Binary data in the .xqst format.
   /// @return string the <rect> elements
-  function drawRects(bytes memory data) external pure returns (string memory);
+  function drawPixels(bytes memory data) external pure returns (string memory);
 
   /// @notice Draw the <rect> elements of an SVG from the data. No validation
   /// @param data Binary data in the .xqst format.
   /// @return string the <rect> elements
-  function drawRectsUnsafe(bytes memory data)
+  function drawPixelsUnsafe(bytes memory data)
     external
     pure
     returns (string memory);
@@ -87,9 +94,9 @@ interface IGraphics {
 
   /// @notice Decodes all of the data needed to draw an SVG from the .xqst file
   /// @param data Binary data in the .xqst format.
-  /// @return ctx The Render Context containing all of the decoded data
-  function decodeData(bytes memory data)
+  /// @return ctx The Draw Context containing all of the decoded data
+  function decodeDrawContext(bytes memory data)
     external
     pure
-    returns (IRenderContext.Context memory ctx);
+    returns (DrawContext memory ctx);
 }
