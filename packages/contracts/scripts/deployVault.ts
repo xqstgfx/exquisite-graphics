@@ -4,6 +4,7 @@ import { Wallet } from '@ethersproject/wallet';
 import { ExquisiteVault__factory } from '../typechain';
 import hre from 'hardhat';
 import 'hardhat-change-network';
+import { parseUnits } from 'ethers/lib/utils';
 
 async function start() {
   const args = require('minimist')(process.argv.slice(2));
@@ -24,13 +25,21 @@ async function start() {
     await fs.readFileSync(addressesPath).toString()
   );
   const deployNetwork =
-    chainId == 4 ? 'rinkeby' : chainId == 80001 ? 'mumbai' : 'mainnet';
+    chainId == 4
+      ? 'rinkeby'
+      : chainId == 80001
+      ? 'mumbai'
+      : chainId == 137
+      ? 'polygon'
+      : 'mainnet';
 
   hre.changeNetwork(deployNetwork);
 
   if (!addressBook.vault) {
     console.log('Deploying exquisite vault...');
-    const deployTx = await new ExquisiteVault__factory(wallet).deploy();
+    const deployTx = await new ExquisiteVault__factory(wallet).deploy({
+      gasPrice: parseUnits('47.0', 'gwei')
+    });
     console.log('Deploy TX: ', deployTx.deployTransaction.hash);
     await deployTx.deployed();
     console.log('exquisite vault deployed at ', deployTx.address);

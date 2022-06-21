@@ -7,9 +7,7 @@ library ThankYou {
   error ThankYouFailed();
 
   address public constant addr =
-    address(0x5FbDB2315678afecb367f032d93F642f64180aa3); // LOCAL
-
-  // address(0x0f739AFC6E4802f68d426BE97E4B9DF7258d326B); // TODO change this before deploy to real
+    address(0x20a596e602c56948532B3626FC94db28FA9C41D3);
 
   function _ty(string memory message) internal {
     if (msg.value > 0) {

@@ -10,7 +10,7 @@ contract ExquisiteVault is Ownable, ReentrancyGuard {
   error NoBalance();
 
   constructor() {
-    transferOwnership(address(0xD286064cc27514B914BAB0F2FaD2E1a89A91F314)); // TODO deploy with: 0xeD618ED70e06813fe3EDAC7Ed5cac2F6A6E6014C
+    transferOwnership(address(0xeD618ED70e06813fe3EDAC7Ed5cac2F6A6E6014C));
   }
 
   function balance() public view returns (uint256) {

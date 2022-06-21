@@ -36,15 +36,19 @@ export default {
     rinkeby: {
       chainId: 4,
       url: require('dotenv').config({ path: '.env.4' }).parsed.RPC_ENDPOINT
+    },
+    polygon: {
+      chainId: 137,
+      url: require('dotenv').config({ path: '.env.137' }).parsed.RPC_ENDPOINT
+    },
+    mainnet: {
+      chainId: 1,
+      url: require('dotenv').config({ path: '.env.1' }).parsed.RPC_ENDPOINT
     }
-    // matic: {
-    //   chainId: 137,
-    //   url: require('dotenv').config({ path: '.env.137' }).parsed.RPC_ENDPOINT
-    // }
   },
   etherscan: {
-    // apiKey: 'KZ9KA8WH63FHJYFVYCWN7DH7KGBKF3NQ6I'
     apiKey: 'KCEM61R2DK9FZJRW1QX6RD51MWENTRGTG4'
+    // apiKey: 'T1SWFR6QNDS9HX4QFA1VH2E3HXK9AC96TT'
   },
   mocha: {
     timeout: 30000

@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import {IThankYou} from './IThankYou.sol';
-
-interface IExquisiteGraphics is IThankYou {
+interface IExquisiteGraphics {
   struct Header {
     /* HEADER START */
     uint8 version; // 8 bits
@@ -99,4 +97,13 @@ interface IExquisiteGraphics is IThankYou {
     external
     pure
     returns (DrawContext memory ctx);
+
+  /// @notice A way to say "Thank You"
+  function ty() external payable;
+
+  /// @notice A way to say "Thank You"
+  function ty(string memory message) external payable;
+
+  /// @notice Able to receive ETH from anyone
+  receive() external payable;
 }
