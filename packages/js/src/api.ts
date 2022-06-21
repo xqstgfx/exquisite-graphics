@@ -190,6 +190,15 @@ const getBinarySVG_Map = (pixels: PixelMap) => {};
 
 /* Function that takes a 2d array of pixels. Something like where the outer array represents y
    and the inner array represents x and returns the binary format for the renderer */
-const getBinarySVG_2DArr = (pixels: Pixel2DArr) => {};
+export const getBinarySVG_2DArr = (pixels: Pixel2DArr) => {
+  let pixelArr: Pixel[] = [];
+  for (let row = 0; row < pixels.length; row++) {
+    for (let col = 0; col < pixels[row].length; col++) {
+      pixelArr.push({ x: col, y: row, color: pixels[row][col] });
+    }
+  }
+
+  return getBinarySVG_Array(pixelArr);
+};
 
 // TODO add support for the ndarray concept that scott pointed out

@@ -4,7 +4,8 @@ import {
   getSVG,
   getBinarySVG_Array,
   getRects,
-  getSVGRects
+  getSVGRects,
+  getBinarySVG_2DArr
 } from './api';
 import { pngToData, pngToPixels } from './utils/png';
 
@@ -15,6 +16,7 @@ export {
   getSVGPixels,
   getSVGRects,
   getBinarySVG_Array,
+  getBinarySVG_2DArr,
   pngToData,
   pngToPixels
 };
