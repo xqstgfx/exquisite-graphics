@@ -191,25 +191,26 @@ export class PixelBuffer {
     return pixelMap;
   }
 }
-
+  // ensure header will be accepted by ExquisiteValidator contract
 const validateOptions = (header: ExquisiteBitmapHeader): boolean => {
   if (header.version != 1) {
     // only version 1 exists
     return false;
   }
 
-  if (header.width < 1 || header.width > 56) {
-    // width must be between 1 and 56
+  if (header.width < 1 || header.width > 256) {
     return false;
   }
 
-  if (header.height < 1 || header.height > 56) {
-    // height must be between 1 and 56
+  if (header.height < 1 || header.height > 256) {
+    return false;
+  }
+
+  if (header.height * header.width > 4096) {
     return false;
   }
 
   if (header.numColors < 1 || header.numColors > 256) {
-    // numColors must be between 1 and 256
     return false;
   }
 
