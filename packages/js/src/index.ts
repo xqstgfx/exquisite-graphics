@@ -7,7 +7,7 @@ import {
   getSVGRects,
   getBinarySVG_2DArr
 } from './api';
-import { pngToData, pngToPixels } from './utils/png';
+// import { pngToData, pngToPixels } from './utils/png';
 
 export {
   PixelBuffer,
@@ -16,7 +16,7 @@ export {
   getSVGPixels,
   getSVGRects,
   getBinarySVG_Array,
-  getBinarySVG_2DArr,
-  pngToData,
-  pngToPixels
+  getBinarySVG_2DArr
+  // pngToData,
+  // pngToPixels
 };
