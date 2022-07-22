@@ -31,6 +31,10 @@ async function start() {
       ? 'mumbai'
       : chainId == 137
       ? 'polygon'
+      : chainId == 5
+      ? 'goerli'
+      : chainId == 100
+      ? 'gnosis'
       : 'mainnet';
 
   hre.changeNetwork(deployNetwork);

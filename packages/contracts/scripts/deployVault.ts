@@ -31,6 +31,10 @@ async function start() {
       ? 'mumbai'
       : chainId == 137
       ? 'polygon'
+      : chainId == 5
+      ? 'goerli'
+      : chainId == 100
+      ? 'gnosis'
       : 'mainnet';
 
   hre.changeNetwork(deployNetwork);
@@ -38,7 +42,7 @@ async function start() {
   if (!addressBook.vault) {
     console.log('Deploying exquisite vault...');
     const deployTx = await new ExquisiteVault__factory(wallet).deploy({
-      gasPrice: parseUnits('47.0', 'gwei')
+      // gasPrice: parseUnits('47.0', 'gwei')
     });
     console.log('Deploy TX: ', deployTx.deployTransaction.hash);
     await deployTx.deployed();
