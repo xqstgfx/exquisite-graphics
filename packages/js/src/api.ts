@@ -49,7 +49,7 @@ export const getSVGPixelBuffer = (buffer: PixelBuffer) => {
   }" width="${buffer.header.width * 16}"><g transform="scale(16 16)">`;
 
   buffer.toPixels().map((pixel) => {
-    svg += `<rect fill="#${pixel.color}" x="${pixel.x}" y="${pixel.y}" height="1" width="1"/>`;
+    svg += `<rect fill="${pixel.color}" x="${pixel.x}" y="${pixel.y}" height="1" width="1"/>`;
   });
 
   svg += '</g></svg>';
@@ -61,7 +61,7 @@ export const getSVGRectsPixelBuffer = (buffer: PixelBuffer) => {
     .toPixels()
     .map(
       (pixel) =>
-        `<rect fill="#${pixel.color}" x="${pixel.x}" y="${pixel.y}" height="1" width="1"/>`
+        `<rect fill="${pixel.color}" x="${pixel.x}" y="${pixel.y}" height="1" width="1"/>`
     )
     .join('');
 };
