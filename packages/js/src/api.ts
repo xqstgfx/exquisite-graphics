@@ -53,6 +53,7 @@ export const getSVGPixelBuffer = (buffer: PixelBuffer) => {
   });
 
   svg += '</g></svg>';
+
   return svg;
 };
 
