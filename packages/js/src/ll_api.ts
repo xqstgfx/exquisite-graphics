@@ -288,7 +288,7 @@ const readPalette = (
         .toString(16)
         .padStart(2, '0');
 
-      palette.push(`#${r}${g}${b}`);
+      palette.push(`${r}${g}${b}`);
     }
   }
 
