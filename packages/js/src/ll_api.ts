@@ -40,10 +40,10 @@ export class PixelBuffer {
       if (palette) {
         this.palette = palette;
         this._setPalette();
-        this._initData();
       } else {
         this.palette = [];
       }
+      this._initData();
     } else {
       this.header = {
         version: 0,
