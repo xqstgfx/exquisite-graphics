@@ -30,15 +30,20 @@ export class PixelBuffer {
   dataBuffer: Buffer = Buffer.from('0', 'hex');
 
   constructor(header?: ExquisiteBitmapHeader, palette?: PixelColor[]) {
-    if (header && palette) {
+    if (header) {
       // TODO: validate options
       this.header = header;
-      this.palette = palette;
       validateOptions(header);
       this.pixelInfo = getPixelInfo(this.header.numColors);
       this._setHeader();
-      this._setPalette();
-      this._initData();
+
+      if (palette) {
+        this.palette = palette;
+        this._setPalette();
+        this._initData();
+      } else {
+        this.palette = [];
+      }
     } else {
       this.header = {
         version: 0,
@@ -191,7 +196,7 @@ export class PixelBuffer {
     return pixelMap;
   }
 }
-  // ensure header will be accepted by ExquisiteValidator contract
+// ensure header will be accepted by ExquisiteValidator contract
 const validateOptions = (header: ExquisiteBitmapHeader): boolean => {
   if (header.version != 1) {
     // only version 1 exists
